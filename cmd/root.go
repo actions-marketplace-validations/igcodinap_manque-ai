@@ -99,6 +99,18 @@ func runReview(cmd *cobra.Command, args []string) {
 
 	formattedDiff := diff.FormatForLLM(files)
 
+	// Check for large diffs and truncate if necessary (limit to ~100k characters for safety)
+	// Most LLMs have around 128k context, we leave room for system prompt and output
+	const maxDiffSize = 100000
+	if len(formattedDiff) > maxDiffSize {
+		fmt.Printf("⚠️ Diff is too large (%d chars), truncating to %d chars...\n", len(formattedDiff), maxDiffSize)
+		// Handle UTF-8 safe truncation
+		runes := []rune(formattedDiff)
+		if len(runes) > maxDiffSize {
+			formattedDiff = string(runes[:maxDiffSize]) + "\n... (truncated due to size limit)"
+		}
+	}
+
 	// Generate PR summary
 	fmt.Println("Generating PR summary...")
 	summary, err := aiClient.GeneratePRSummary(prInfo.Title, prInfo.Description, formattedDiff)
