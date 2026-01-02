@@ -22,8 +22,8 @@ A robust Golang binary that reviews Pull Requests using LLMs (OpenAI, Anthropic,
 2. Navigate to **Settings** → **Secrets and variables** → **Actions**
 3. Click **New repository secret**
 4. Add your LLM API key:
-   - **Name**: `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`)
-   - **Value**: Your actual API key (e.g., `sk-...`)
+   - **Name**: `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`)
+   - **Value**: Your actual API key (e.g., `sk-...`, `sk-or-v1-...`)
 
 #### Step 2: Create the Workflow File
 
@@ -60,7 +60,8 @@ jobs:
 You can customize the behavior by adding more environment variables:
 
 ```yaml
-      - name: AI Code Review
+# Using Anthropic Claude
+      - name: AI Code Review (Anthropic)
         uses: docker://ghcr.io/manque-ai/manque-ai:latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -74,6 +75,18 @@ You can customize the behavior by adding more environment variables:
             - Prefer composition over inheritance
             - All functions must have JSDoc comments
             - Use meaningful variable names
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+
+# Using OpenRouter (Multiple Models Available)
+      - name: AI Code Review (OpenRouter)
+        uses: docker://ghcr.io/manque-ai/manque-ai:latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LLM_PROVIDER: "openrouter"
+          LLM_MODEL: "anthropic/claude-3.5-sonnet"  # or any OpenRouter model
+          UPDATE_PR_TITLE: "true"
+          UPDATE_PR_BODY: "true"
           GITHUB_EVENT_PATH: ${{ github.event_path }}
 ```
 
@@ -137,7 +150,7 @@ go build -o ai-reviewer
 |----------|-------------|----------|---------|
 | `GITHUB_TOKEN` | GitHub API token | ✅ | - |
 | `LLM_API_KEY` | LLM provider API key | ✅ | - |
-| `LLM_PROVIDER` | LLM provider | ❌ | `openai` |
+| `LLM_PROVIDER` | LLM provider (openai, anthropic, google, openrouter) | ❌ | `openai` |
 | `LLM_MODEL` | Model name | ❌ | `gpt-4o` |
 | `LLM_BASE_URL` | Custom API endpoint | ❌ | - |
 | `GITHUB_API_URL` | GitHub API URL | ❌ | `https://api.github.com` |
@@ -173,10 +186,17 @@ ai-reviewer --repo owner/repo --pr 123
 # Review PR by URL
 ai-reviewer --url https://github.com/owner/repo/pull/123
 
-# Set environment variables
+# Set environment variables for OpenAI
 export GITHUB_TOKEN=your_token
 export LLM_API_KEY=your_api_key
 export LLM_PROVIDER=openai
+ai-reviewer --repo owner/repo --pr 123
+
+# Or use OpenRouter with any model
+export GITHUB_TOKEN=your_token
+export LLM_API_KEY=sk-or-v1-your-key
+export LLM_PROVIDER=openrouter
+export LLM_MODEL=anthropic/claude-3.5-sonnet
 ai-reviewer --repo owner/repo --pr 123
 ```
 
@@ -206,6 +226,23 @@ export LLM_PROVIDER=google
 export LLM_API_KEY=your_google_api_key
 export LLM_MODEL=gemini-pro
 ```
+
+### OpenRouter (Multiple Models)
+```bash
+export LLM_PROVIDER=openrouter
+export LLM_API_KEY=sk-or-v1-...
+export LLM_MODEL=anthropic/claude-3.5-sonnet  # or any supported model
+```
+
+Popular OpenRouter models:
+- `anthropic/claude-3.5-sonnet` - Excellent for code review
+- `openai/gpt-4o` - Good all-around performance  
+- `google/gemini-pro-1.5` - Strong reasoning capabilities
+- `meta-llama/llama-3.1-70b-instruct` - Open source alternative
+- `qwen/qwen-2.5-72b-instruct` - High quality, cost-effective
+- `deepseek/deepseek-coder-v2` - Specialized for code analysis
+
+See [OpenRouter models](https://openrouter.ai/models) for the complete list.
 
 ### Custom OpenAI-Compatible Provider
 ```bash

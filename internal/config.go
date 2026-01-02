@@ -59,12 +59,13 @@ func (c *Config) validate() error {
 	}
 	
 	validProviders := map[string]bool{
-		"openai":    true,
-		"anthropic": true,
-		"google":    true,
+		"openai":     true,
+		"anthropic":  true,
+		"google":     true,
+		"openrouter": true,
 	}
 	if !validProviders[c.LLMProvider] {
-		return fmt.Errorf("invalid LLM_PROVIDER: %s. Must be one of: openai, anthropic, google", c.LLMProvider)
+		return fmt.Errorf("invalid LLM_PROVIDER: %s. Must be one of: openai, anthropic, google, openrouter", c.LLMProvider)
 	}
 	
 	return nil

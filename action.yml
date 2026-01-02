@@ -18,7 +18,7 @@ inputs:
     default: 'gpt-4o'
   
   llm_provider:
-    description: 'LLM provider (openai, anthropic, google)'
+    description: 'LLM provider (openai, anthropic, google, openrouter)'
     required: false
     default: 'openai'
   

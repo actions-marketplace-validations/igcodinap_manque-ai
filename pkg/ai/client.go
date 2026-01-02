@@ -25,6 +25,8 @@ func NewClient(config Config) (Client, error) {
 		return NewAnthropicClient(config), nil
 	case "google":
 		return NewGoogleClient(config), nil
+	case "openrouter":
+		return NewOpenRouterClient(config), nil
 	default:
 		return nil, fmt.Errorf("unsupported LLM provider: %s", config.Provider)
 	}
