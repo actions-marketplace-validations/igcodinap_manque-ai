@@ -1,4 +1,4 @@
-name: AI Code Review
+name: Manque Code Reviewer
 
 on:
   pull_request:
@@ -17,12 +17,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run AI Code Review
+      - name: Run Manque Code Reviewer
         uses: docker://ghcr.io/manque-ai/manque-ai:latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # Uncomment the provider you want to use:
-          # ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          # GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          # OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LLM_PROVIDER: 'openrouter'
+          LLM_MODEL: 'mistralai/devstral-2512:free'
