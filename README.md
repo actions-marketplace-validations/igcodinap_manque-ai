@@ -327,4 +327,4 @@ export LLM_API_KEY=your_key
 
 ## License
 
-MIT Licensed - see LICENSE file for details.
+MIT License - see LICENSE file for details.
