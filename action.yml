@@ -1,4 +1,4 @@
-name: 'AI Code Reviewer'
+name: 'Manque AI'
 description: 'AI-powered Pull Request reviewer using LLMs (OpenAI, Anthropic, Google)'
 author: 'manque-ai'
 
@@ -54,5 +54,5 @@ runs:
     UPDATE_PR_BODY: ${{ inputs.update_pr_body }}
 
 branding:
-  icon: 'code-review'
+  icon: 'code'
   color: 'blue'
