@@ -46,7 +46,7 @@ jobs:
       issues: write
     steps:
       - name: AI Code Review
-        uses: docker://ghcr.io/manque-ai/manque-ai:latest
+        uses: docker://ghcr.io/igcodinap/manque-ai:latest
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           LLM_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -62,7 +62,7 @@ You can customize the behavior by adding more environment variables:
 ```yaml
 # Using Anthropic Claude
       - name: AI Code Review (Anthropic)
-        uses: docker://ghcr.io/manque-ai/manque-ai:latest
+        uses: docker://ghcr.io/igcodinap/manque-ai:latest
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           LLM_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -79,7 +79,7 @@ You can customize the behavior by adding more environment variables:
 
 # Using OpenRouter (Multiple Models Available)
       - name: AI Code Review (OpenRouter)
-        uses: docker://ghcr.io/manque-ai/manque-ai:latest
+        uses: docker://ghcr.io/igcodinap/manque-ai:latest
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

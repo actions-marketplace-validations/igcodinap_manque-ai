@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Manque Code Reviewer
-        uses: docker://ghcr.io/manque-ai/manque-ai:latest
+        uses: docker://ghcr.io/igcodinap/manque-ai:latest
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
