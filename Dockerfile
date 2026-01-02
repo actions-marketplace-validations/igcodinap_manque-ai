@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 # Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ai-reviewer .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o manque-ai .
 
 # Final stage
 FROM alpine:latest
@@ -32,13 +32,13 @@ RUN addgroup -g 1000 reviewer && adduser -D -u 1000 -G reviewer reviewer
 WORKDIR /app
 
 # Copy the binary from builder stage
-COPY --from=builder /app/ai-reviewer .
+COPY --from=builder /app/manque-ai .
 
 # Change ownership to non-root user
-RUN chown reviewer:reviewer /app/ai-reviewer
+RUN chown reviewer:reviewer /app/manque-ai
 
 # Switch to non-root user
 USER reviewer
 
-# Set entrypoint
-ENTRYPOINT ["./ai-reviewer"]
+# Set entrypoint (use absolute path as GitHub Actions overrides workdir)
+ENTRYPOINT ["/app/manque-ai"]
