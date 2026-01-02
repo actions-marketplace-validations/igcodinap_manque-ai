@@ -152,12 +152,66 @@ func (c *Client) UpdatePR(owner, repo string, number int, title, body *string) e
 	return nil
 }
 
+// BotCommentMarker is used to identify comments created by this bot
+const BotCommentMarker = "<!-- manque-ai-bot -->"
+
 func (c *Client) CreateComment(owner, repo string, number int, body string) error {
+	// Add marker to identify bot comments
+	markedBody := BotCommentMarker + "\n" + body
 	comment := &github.IssueComment{
-		Body: &body,
+		Body: &markedBody,
 	}
 	
 	_, _, err := c.client.Issues.CreateComment(c.ctx, owner, repo, number, comment)
+	if err != nil {
+		return fmt.Errorf("failed to create comment: %w", err)
+	}
+	
+	return nil
+}
+
+// FindBotComment finds an existing comment created by this bot
+func (c *Client) FindBotComment(owner, repo string, number int) (*github.IssueComment, error) {
+	comments, _, err := c.client.Issues.ListComments(c.ctx, owner, repo, number, &github.IssueListCommentsOptions{
+		ListOptions: github.ListOptions{PerPage: 100},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list comments: %w", err)
+	}
+	
+	for _, comment := range comments {
+		if comment.Body != nil && strings.HasPrefix(*comment.Body, BotCommentMarker) {
+			return comment, nil
+		}
+	}
+	
+	return nil, nil
+}
+
+// CreateOrUpdateComment creates a new comment or updates an existing bot comment
+func (c *Client) CreateOrUpdateComment(owner, repo string, number int, body string) error {
+	existingComment, err := c.FindBotComment(owner, repo, number)
+	if err != nil {
+		return err
+	}
+	
+	markedBody := BotCommentMarker + "\n" + body
+	
+	if existingComment != nil {
+		// Update existing comment
+		existingComment.Body = &markedBody
+		_, _, err = c.client.Issues.EditComment(c.ctx, owner, repo, *existingComment.ID, existingComment)
+		if err != nil {
+			return fmt.Errorf("failed to update comment: %w", err)
+		}
+		return nil
+	}
+	
+	// Create new comment
+	comment := &github.IssueComment{
+		Body: &markedBody,
+	}
+	_, _, err = c.client.Issues.CreateComment(c.ctx, owner, repo, number, comment)
 	if err != nil {
 		return fmt.Errorf("failed to create comment: %w", err)
 	}

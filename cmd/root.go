@@ -150,12 +150,17 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 			newTitle = &summary.Title
 		}
 		if config.UpdatePRBody {
-			// Create enhanced description
-			enhanced := fmt.Sprintf("%s\n\n## AI Summary\n%s\n\n### Files Changed\n", 
-				prInfo.Description, summary.Description)
+			// Build the AI summary section
+			var aiSection strings.Builder
+			aiSection.WriteString("## AI Summary\n")
+			aiSection.WriteString(summary.Description + "\n\n")
+			aiSection.WriteString("### Files Changed\n")
 			for _, file := range summary.Files {
-				enhanced += fmt.Sprintf("- **%s**: %s\n", file.Filename, file.Summary)
+				aiSection.WriteString(fmt.Sprintf("- **%s**: %s\n", file.Filename, file.Summary))
 			}
+			
+			// Strip any existing AI summary from the description and add new one
+			enhanced := stripAISummary(prInfo.Description) + "\n\n" + aiSection.String()
 			newBody = &enhanced
 		}
 		
@@ -164,9 +169,9 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 		}
 	}
 
-	// Create walkthrough comment
+	// Create or update walkthrough comment (prevents duplicates on re-runs)
 	walkthroughBody := formatWalkthrough(summary, review)
-	if err := githubClient.CreateComment(owner, repo, prInfo.Number, walkthroughBody); err != nil {
+	if err := githubClient.CreateOrUpdateComment(owner, repo, prInfo.Number, walkthroughBody); err != nil {
 		return fmt.Errorf("failed to create walkthrough comment: %w", err)
 	}
 
@@ -200,6 +205,18 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 	}
 
 	return nil
+}
+
+// stripAISummary removes any existing AI Summary section from the PR description
+func stripAISummary(description string) string {
+	// Find the start of the AI Summary section
+	aiSummaryMarker := "## AI Summary"
+	idx := strings.Index(description, aiSummaryMarker)
+	if idx == -1 {
+		return strings.TrimSpace(description)
+	}
+	// Return everything before the AI Summary section
+	return strings.TrimSpace(description[:idx])
 }
 
 func formatWalkthrough(summary *ai.PRSummary, review *ai.ReviewResult) string {
