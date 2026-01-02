@@ -31,9 +31,9 @@ type Config struct {
 
 func LoadConfig() (*Config, error) {
 	config := &Config{
-		GitHubToken:     getEnvWithDefault("GH_TOKEN", ""),
+		GitHubToken:     getEnvWithFallbacks("GH_TOKEN", "GITHUB_TOKEN"),
 		GitHubAPIURL:    getEnvWithDefault("GITHUB_API_URL", "https://api.github.com"),
-		LLMAPIKey:       getEnvWithDefault("LLM_API_KEY", ""),
+		LLMAPIKey:       getEnvWithFallbacks("LLM_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "OPENROUTER_API_KEY"),
 		LLMModel:        getEnvWithDefault("LLM_MODEL", "gpt-4o"),
 		LLMProvider:     getEnvWithDefault("LLM_PROVIDER", "openai"),
 		LLMBaseURL:      getEnvWithDefault("LLM_BASE_URL", ""),
@@ -52,10 +52,10 @@ func LoadConfig() (*Config, error) {
 
 func (c *Config) validate() error {
 	if c.GitHubToken == "" {
-		return fmt.Errorf("GH_TOKEN is required")
+		return fmt.Errorf("GitHub token is required (set GH_TOKEN or GITHUB_TOKEN)")
 	}
 	if c.LLMAPIKey == "" {
-		return fmt.Errorf("LLM_API_KEY is required")
+		return fmt.Errorf("LLM API key is required (set LLM_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, or OPENROUTER_API_KEY)")
 	}
 
 	validProviders := map[string]bool{
@@ -76,4 +76,15 @@ func getEnvWithDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// getEnvWithFallbacks checks multiple environment variable names in order
+// and returns the first non-empty value found
+func getEnvWithFallbacks(keys ...string) string {
+	for _, key := range keys {
+		if value := os.Getenv(key); value != "" {
+			return value
+		}
+	}
+	return ""
 }
