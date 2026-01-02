@@ -1,0 +1,58 @@
+name: 'AI Code Reviewer'
+description: 'AI-powered Pull Request reviewer using LLMs (OpenAI, Anthropic, Google)'
+author: 'manque-ai'
+
+inputs:
+  github_token:
+    description: 'GitHub token for API access'
+    required: true
+    default: ${{ github.token }}
+  
+  llm_api_key:
+    description: 'API key for LLM provider'
+    required: true
+  
+  llm_model:
+    description: 'LLM model to use'
+    required: false
+    default: 'gpt-4o'
+  
+  llm_provider:
+    description: 'LLM provider (openai, anthropic, google)'
+    required: false
+    default: 'openai'
+  
+  llm_base_url:
+    description: 'Custom base URL for OpenAI-compatible providers'
+    required: false
+  
+  style_guide_rules:
+    description: 'Custom style guide rules'
+    required: false
+  
+  update_pr_title:
+    description: 'Update PR title with AI suggestions'
+    required: false
+    default: 'true'
+  
+  update_pr_body:
+    description: 'Update PR body with AI summary'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    GITHUB_TOKEN: ${{ inputs.github_token }}
+    LLM_API_KEY: ${{ inputs.llm_api_key }}
+    LLM_MODEL: ${{ inputs.llm_model }}
+    LLM_PROVIDER: ${{ inputs.llm_provider }}
+    LLM_BASE_URL: ${{ inputs.llm_base_url }}
+    STYLE_GUIDE_RULES: ${{ inputs.style_guide_rules }}
+    UPDATE_PR_TITLE: ${{ inputs.update_pr_title }}
+    UPDATE_PR_BODY: ${{ inputs.update_pr_body }}
+
+branding:
+  icon: 'code-review'
+  color: 'blue'
