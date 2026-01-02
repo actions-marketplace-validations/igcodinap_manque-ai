@@ -48,7 +48,7 @@ jobs:
       - name: AI Code Review
         uses: docker://ghcr.io/manque-ai/manque-ai:latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           LLM_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LLM_PROVIDER: "openai"
           LLM_MODEL: "gpt-4o"
@@ -64,7 +64,7 @@ You can customize the behavior by adding more environment variables:
       - name: AI Code Review (Anthropic)
         uses: docker://ghcr.io/manque-ai/manque-ai:latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           LLM_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           LLM_PROVIDER: "anthropic"
           LLM_MODEL: "claude-3-5-sonnet-20241022"
@@ -81,7 +81,7 @@ You can customize the behavior by adding more environment variables:
       - name: AI Code Review (OpenRouter)
         uses: docker://ghcr.io/manque-ai/manque-ai:latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           LLM_PROVIDER: "openrouter"
           LLM_MODEL: "anthropic/claude-3.5-sonnet"  # or any OpenRouter model
@@ -122,7 +122,7 @@ If you prefer to build from source, you can reference the repository directly:
           cd ai-reviewer
           docker build -t manque-ai .
           docker run --rm \
-            -e GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            -e GH_TOKEN="${{ secrets.GH_TOKEN }}" \
             -e LLM_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             -e LLM_PROVIDER="openai" \
             -e LLM_MODEL="gpt-4o" \
@@ -148,7 +148,7 @@ go build -o ai-reviewer
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `GITHUB_TOKEN` | GitHub API token | ✅ | - |
+| `GH_TOKEN` | GitHub API token | ✅ | - |
 | `LLM_API_KEY` | LLM provider API key | ✅ | - |
 | `LLM_PROVIDER` | LLM provider (openai, anthropic, google, openrouter) | ❌ | `openai` |
 | `LLM_MODEL` | Model name | ❌ | `gpt-4o` |
@@ -165,7 +165,7 @@ All environment variables are also available as action inputs in lowercase:
 ```yaml
 - uses: manque-ai/ai-reviewer@v1
   with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
+    github_token: ${{ secrets.GH_TOKEN }}
     llm_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
     llm_provider: "anthropic"
     llm_model: "claude-3-5-sonnet-20241022"
@@ -187,13 +187,13 @@ ai-reviewer --repo owner/repo --pr 123
 ai-reviewer --url https://github.com/owner/repo/pull/123
 
 # Set environment variables for OpenAI
-export GITHUB_TOKEN=your_token
+export GH_TOKEN=your_token
 export LLM_API_KEY=your_api_key
 export LLM_PROVIDER=openai
 ai-reviewer --repo owner/repo --pr 123
 
 # Or use OpenRouter with any model
-export GITHUB_TOKEN=your_token
+export GH_TOKEN=your_token
 export LLM_API_KEY=sk-or-v1-your-key
 export LLM_PROVIDER=openrouter
 export LLM_MODEL=anthropic/claude-3.5-sonnet

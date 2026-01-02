@@ -44,7 +44,7 @@ runs:
   using: 'docker'
   image: 'Dockerfile'
   env:
-    GITHUB_TOKEN: ${{ inputs.github_token }}
+    GH_TOKEN: ${{ inputs.github_token }}
     LLM_API_KEY: ${{ inputs.llm_api_key }}
     LLM_MODEL: ${{ inputs.llm_model }}
     LLM_PROVIDER: ${{ inputs.llm_provider }}
