@@ -143,36 +143,30 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 	parts := strings.Split(prInfo.Repository, "/")
 	owner, repo := parts[0], parts[1]
 
-	// Update PR title and body if configured
-	if config.UpdatePRTitle || config.UpdatePRBody {
-		var newTitle, newBody *string
-		if config.UpdatePRTitle {
-			newTitle = &summary.Title
-		}
-		if config.UpdatePRBody {
-			// Build the AI summary section
-			var aiSection strings.Builder
-			aiSection.WriteString("## AI Summary\n")
-			aiSection.WriteString(summary.Description + "\n\n")
-			aiSection.WriteString("### Files Changed\n")
-			for _, file := range summary.Files {
-				aiSection.WriteString(fmt.Sprintf("- **%s**: %s\n", file.Filename, file.Summary))
-			}
-			
-			// Strip any existing AI summary from the description and add new one
-			enhanced := stripAISummary(prInfo.Description) + "\n\n" + aiSection.String()
-			newBody = &enhanced
-		}
-		
-		if err := githubClient.UpdatePR(owner, repo, prInfo.Number, newTitle, newBody); err != nil {
-			return fmt.Errorf("failed to update PR: %w", err)
+	// Update PR title if configured
+	if config.UpdatePRTitle {
+		if err := githubClient.UpdatePR(owner, repo, prInfo.Number, &summary.Title, nil); err != nil {
+			return fmt.Errorf("failed to update PR title: %w", err)
 		}
 	}
 
-	// Create or update walkthrough comment (prevents duplicates on re-runs)
-	walkthroughBody := formatWalkthrough(summary, review)
-	if err := githubClient.CreateOrUpdateComment(owner, repo, prInfo.Number, walkthroughBody); err != nil {
-		return fmt.Errorf("failed to create walkthrough comment: %w", err)
+	// Update PR body with full report if configured
+	if config.UpdatePRBody {
+		// Build the AI summary section
+		walkthrough := formatWalkthrough(summary, review)
+		
+		var aiSection strings.Builder
+		aiSection.WriteString("\n\n<!-- ai-review-start -->\n")
+		aiSection.WriteString("# 🤖 AI Code Review\n\n")
+		aiSection.WriteString(walkthrough)
+		aiSection.WriteString("\n<!-- ai-review-end -->")
+		
+		// Strip any existing AI summary from the description and add new one
+		enhanced := stripAISummary(prInfo.Description) + aiSection.String()
+		
+		if err := githubClient.UpdatePR(owner, repo, prInfo.Number, nil, &enhanced); err != nil {
+			return fmt.Errorf("failed to update PR body: %w", err)
+		}
 	}
 
 	// Create review with inline comments
@@ -209,14 +203,21 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 
 // stripAISummary removes any existing AI Summary section from the PR description
 func stripAISummary(description string) string {
-	// Find the start of the AI Summary section
-	aiSummaryMarker := "## AI Summary"
-	idx := strings.Index(description, aiSummaryMarker)
-	if idx == -1 {
-		return strings.TrimSpace(description)
+	// 1. Try to find the new robust HTML markers
+	startMarker := "<!-- ai-review-start -->"
+	idx := strings.Index(description, startMarker)
+	if idx != -1 {
+		return strings.TrimSpace(description[:idx])
 	}
-	// Return everything before the AI Summary section
-	return strings.TrimSpace(description[:idx])
+
+	// 2. Fallback: Find the old markdown header marker
+	aiSummaryMarker := "## AI Summary"
+	idx = strings.Index(description, aiSummaryMarker)
+	if idx != -1 {
+		return strings.TrimSpace(description[:idx])
+	}
+
+	return strings.TrimSpace(description)
 }
 
 func formatWalkthrough(summary *ai.PRSummary, review *ai.ReviewResult) string {
