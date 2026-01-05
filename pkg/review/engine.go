@@ -71,8 +71,12 @@ func (e *Engine) Review(diffContent string) (*ai.PRSummary, *ai.ReviewResult, er
 	// Generate Code Review
 	internal.Logger.Info("Generating code review...")
 	var review *ai.ReviewResult
-	if e.Config.StyleGuideRules != "" {
-		review, err = e.AIClient.GenerateCodeReviewWithStyleGuide(title, description, formattedDiff, e.Config.StyleGuideRules)
+	
+	// Combine discovered practices with style guide rules
+	combinedRules := e.getCombinedRules()
+	
+	if combinedRules != "" {
+		review, err = e.AIClient.GenerateCodeReviewWithStyleGuide(title, description, formattedDiff, combinedRules)
 	} else {
 		review, err = e.AIClient.GenerateCodeReview(title, description, formattedDiff)
 	}
@@ -109,8 +113,12 @@ func (e *Engine) ReviewWithContext(title, description, diffContent string) (*ai.
 
 	internal.Logger.Info("Generating code review...")
 	var review *ai.ReviewResult
-	if e.Config.StyleGuideRules != "" {
-		review, err = e.AIClient.GenerateCodeReviewWithStyleGuide(title, description, formattedDiff, e.Config.StyleGuideRules)
+	
+	// Combine discovered practices with style guide rules
+	combinedRules := e.getCombinedRules()
+	
+	if combinedRules != "" {
+		review, err = e.AIClient.GenerateCodeReviewWithStyleGuide(title, description, formattedDiff, combinedRules)
 	} else {
 		review, err = e.AIClient.GenerateCodeReview(title, description, formattedDiff)
 	}
@@ -119,6 +127,25 @@ func (e *Engine) ReviewWithContext(title, description, diffContent string) (*ai.
 	}
 
 	return summary, review, nil
+}
+
+// getCombinedRules combines discovered practices with user-provided style guide rules
+func (e *Engine) getCombinedRules() string {
+	var parts []string
+	
+	if e.Config.DiscoveredPractices != "" {
+		parts = append(parts, "## Repository Practices (Auto-Discovered)\n\n"+e.Config.DiscoveredPractices)
+	}
+	
+	if e.Config.StyleGuideRules != "" {
+		parts = append(parts, "## Custom Style Guide Rules\n\n"+e.Config.StyleGuideRules)
+	}
+	
+	if len(parts) == 0 {
+		return ""
+	}
+	
+	return strings.Join(parts, "\n\n---\n\n")
 }
 
 // FormatOutput generates the standard markdown report

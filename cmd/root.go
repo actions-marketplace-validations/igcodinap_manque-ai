@@ -149,15 +149,33 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 
 	// Create review with inline comments
 	if len(review.Comments) > 0 {
+		internal.Logger.Debug("AI returned comments", "count", len(review.Comments))
+		
 		var reviewComments []*gh.DraftReviewComment
+		seenComments := make(map[string]bool) // Deduplicate before sending
+		batchDuplicates := 0
+		
 		for _, comment := range review.Comments {
+			// Combine header and content for a complete, unique comment
+			body := fmt.Sprintf("**%s**\n\n%s", comment.Header, comment.Content)
+			
+			// Create a fingerprint to detect duplicates within this batch
+			fingerprint := fmt.Sprintf("%s:%d:%d:%s", comment.File, comment.StartLine, comment.EndLine, body)
+			if seenComments[fingerprint] {
+				batchDuplicates++
+				internal.Logger.Debug("Batch duplicate found", "file", comment.File, "startLine", comment.StartLine, "endLine", comment.EndLine)
+				continue // Skip duplicate
+			}
+			seenComments[fingerprint] = true
+			
 			reviewComments = append(reviewComments, &gh.DraftReviewComment{
 				Path:      &comment.File,
 				Line:      &comment.EndLine,
 				StartLine: &comment.StartLine,
-				Body:      &comment.Content,
+				Body:      &body,
 			})
 		}
+		internal.Logger.Debug("Batch deduplication complete", "unique_comments", len(reviewComments), "batch_duplicates", batchDuplicates)
 		
 		reviewBody := fmt.Sprintf("## Code Review Summary\n\n" +
 			"**Estimated Review Effort**: %d/5\n" +

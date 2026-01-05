@@ -33,6 +33,10 @@ type Config struct {
 	// CLI settings
 	Debug bool
 	SkipGitHubValidation bool
+	
+	// Discovery settings
+	AutoDiscoverPractices bool   // Enable auto-discovery of repo practices (default: true)
+	DiscoveredPractices   string // Content discovered from repo practice files
 }
 
 func LoadConfig() (*Config, error) {
@@ -40,16 +44,17 @@ func LoadConfig() (*Config, error) {
 	_ = godotenv.Load()
 
 	config := &Config{
-		GitHubToken:     getEnvWithFallbacks("GH_TOKEN", "GITHUB_TOKEN"),
-		GitHubAPIURL:    getEnvWithDefault("GITHUB_API_URL", "https://api.github.com"),
-		LLMAPIKey:       getEnvWithFallbacks("LLM_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "OPENROUTER_API_KEY"),
-		LLMModel:        getEnvWithDefault("LLM_MODEL", "gpt-4o"),
-		LLMProvider:     getEnvWithDefault("LLM_PROVIDER", "openai"),
-		LLMBaseURL:      getEnvWithDefault("LLM_BASE_URL", ""),
-		StyleGuideRules: getEnvWithDefault("STYLE_GUIDE_RULES", ""),
-		GitHubEventPath: getEnvWithDefault("GITHUB_EVENT_PATH", ""),
-		UpdatePRTitle:   getEnvWithDefault("UPDATE_PR_TITLE", "true") == "true",
-		UpdatePRBody:    getEnvWithDefault("UPDATE_PR_BODY", "true") == "true",
+		GitHubToken:           getEnvWithFallbacks("GH_TOKEN", "GITHUB_TOKEN"),
+		GitHubAPIURL:          getEnvWithDefault("GITHUB_API_URL", "https://api.github.com"),
+		LLMAPIKey:             getEnvWithFallbacks("LLM_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "OPENROUTER_API_KEY"),
+		LLMModel:              getEnvWithDefault("LLM_MODEL", "gpt-4o"),
+		LLMProvider:           getEnvWithDefault("LLM_PROVIDER", "openai"),
+		LLMBaseURL:            getEnvWithDefault("LLM_BASE_URL", ""),
+		StyleGuideRules:       getEnvWithDefault("STYLE_GUIDE_RULES", ""),
+		GitHubEventPath:       getEnvWithDefault("GITHUB_EVENT_PATH", ""),
+		UpdatePRTitle:         getEnvWithDefault("UPDATE_PR_TITLE", "true") == "true",
+		UpdatePRBody:          getEnvWithDefault("UPDATE_PR_BODY", "true") == "true",
+		AutoDiscoverPractices: getEnvWithDefault("AUTO_DISCOVER_PRACTICES", "true") == "true",
 	}
 
 	return config, nil
