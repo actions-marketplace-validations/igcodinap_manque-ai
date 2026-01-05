@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/manque-ai/internal"
 	"github.com/manque-ai/pkg/ai"
+	"github.com/manque-ai/pkg/discovery"
 	"github.com/manque-ai/pkg/review"
 	"github.com/spf13/cobra"
 )
@@ -28,6 +30,7 @@ func init() {
 	localCmd.Flags().StringVar(&baseBranch, "base", "main", "Base branch to compare against")
 	localCmd.Flags().StringVar(&headBranch, "head", "HEAD", "Head branch (changes source)")
 	localCmd.Flags().Bool("mock", false, "Run with mock AI response (for testing UI)")
+	localCmd.Flags().Bool("no-discover", false, "Disable auto-discovery of repo practices")
 }
 
 func runLocalReview(cmd *cobra.Command, args []string) {
@@ -49,7 +52,28 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// 3. Get Git Diff
+	// 3. Discover repo practices (if enabled)
+	noDiscover, _ := cmd.Flags().GetBool("no-discover")
+	if !noDiscover && config.AutoDiscoverPractices {
+		cwd, err := os.Getwd()
+		if err != nil {
+			internal.Logger.Warn("Could not get current directory for discovery", "error", err)
+		} else {
+			internal.Logger.Info("Discovering repo practices...")
+			practices, err := discovery.Discover(cwd)
+			if err != nil {
+				internal.Logger.Warn("Failed to discover repo practices", "error", err)
+			} else if practices.HasPractices() {
+				config.DiscoveredPractices = practices.Combined
+				internal.Logger.Info(practices.Summary())
+				internal.Logger.Debug("Discovered practices content", "size", len(practices.Combined))
+			} else {
+				internal.Logger.Debug("No repo practices found")
+			}
+		}
+	}
+
+	// 4. Get Git Diff
 	internal.Logger.Info("Getting git diff...", "base", baseBranch, "head", headBranch)
 	
 	// Check if git is available
