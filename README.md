@@ -48,11 +48,33 @@ cp .env.example .env
 # Edit .env and add your LLM_API_KEY
 ```
 
-#### Option B: Exporting variables
+#### Option B: Exporting variables (or adding to .env)
+
+**OpenAI**
 ```bash
-# OpenAI
 export LLM_PROVIDER=openai
 export LLM_API_KEY=sk-...
+```
+
+**Anthropic**
+```bash
+export LLM_PROVIDER=anthropic
+export LLM_API_KEY=sk-ant-...
+```
+
+**Local Ollama** (No key required, just pointing to your local instance)
+```bash
+export LLM_PROVIDER=openai
+export LLM_BASE_URL=http://localhost:11434/v1
+export LLM_API_KEY=ollama
+export LLM_MODEL=llama3 # Make sure to `ollama pull llama3` first!
+```
+
+**OpenRouter**
+```bash
+export LLM_PROVIDER=openrouter
+export LLM_API_KEY=sk-or-...
+export LLM_MODEL=anthropic/claude-3.5-sonnet
 ```
 
 ### 3. Run Review
