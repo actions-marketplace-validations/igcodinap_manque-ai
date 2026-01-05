@@ -3,11 +3,13 @@ package internal
 import (
 	"fmt"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
 	// GitHub settings
-	GitHubToken  string `validate:"required"`
+	GitHubToken  string // Optional for local
 	GitHubAPIURL string
 
 	// LLM settings
@@ -27,9 +29,16 @@ type Config struct {
 	// Output settings
 	UpdatePRTitle bool
 	UpdatePRBody  bool
+	
+	// CLI settings
+	Debug bool
+	SkipGitHubValidation bool
 }
 
 func LoadConfig() (*Config, error) {
+	// Load .env file if it exists
+	_ = godotenv.Load()
+
 	config := &Config{
 		GitHubToken:     getEnvWithFallbacks("GH_TOKEN", "GITHUB_TOKEN"),
 		GitHubAPIURL:    getEnvWithDefault("GITHUB_API_URL", "https://api.github.com"),
@@ -43,15 +52,11 @@ func LoadConfig() (*Config, error) {
 		UpdatePRBody:    getEnvWithDefault("UPDATE_PR_BODY", "true") == "true",
 	}
 
-	if err := config.validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
-	}
-
 	return config, nil
 }
 
-func (c *Config) validate() error {
-	if c.GitHubToken == "" {
+func (c *Config) Validate() error {
+	if !c.SkipGitHubValidation && c.GitHubToken == "" {
 		return fmt.Errorf("GitHub token is required (set GH_TOKEN or GITHUB_TOKEN)")
 	}
 	if c.LLMAPIKey == "" {

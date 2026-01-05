@@ -1,18 +1,22 @@
 package internal
 
 import (
-	"log"
+	"log/slog"
 	"os"
 )
 
 var (
-	InfoLogger    *log.Logger
-	WarningLogger *log.Logger
-	ErrorLogger   *log.Logger
+	Logger *slog.Logger
 )
 
-func InitLogger() {
-	InfoLogger = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	WarningLogger = log.New(os.Stderr, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
-	ErrorLogger = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+func InitLogger(debug bool) {
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}
+	if debug {
+		opts.Level = slog.LevelDebug
+		opts.AddSource = true
+	}
+
+	Logger = slog.New(slog.NewTextHandler(os.Stdout, opts))
 }

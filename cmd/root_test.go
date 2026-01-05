@@ -97,3 +97,51 @@ This should NOT be stripped because case is different`
 	}
 }
 
+func TestStripAISummary_NewHTMLMarkers(t *testing.T) {
+	description := `Original PR description.
+
+<!-- ai-review-start -->
+# 🤖 AI Code Review
+... content ...
+<!-- ai-review-end -->`
+
+	result := stripAISummary(description)
+	expected := "Original PR description."
+	
+	if result != expected {
+		t.Errorf("Expected '%s', got: '%s'", expected, result)
+	}
+}
+
+func TestStripAISummary_LegacyMarkerFallback(t *testing.T) {
+	description := `Original PR description.
+
+## AI Summary
+Old summary content...`
+
+	result := stripAISummary(description)
+	expected := "Original PR description."
+	
+	if result != expected {
+		t.Errorf("Expected '%s', got: '%s'", expected, result)
+	}
+}
+
+func TestStripAISummary_PrefersNewMarker(t *testing.T) {
+	// If both exist (rare edge case), it should strip from the first valid marker found
+	// Since the code checks for HTML marker first, that should take precedence if it appears earlier or later?
+	// Actually the code checks HTML first.
+	description := `Original content.
+	
+<!-- ai-review-start -->
+New content
+## AI Summary
+Old content inside new content`
+
+	result := stripAISummary(description)
+	expected := "Original content."
+	
+	if result != expected {
+		t.Errorf("Expected '%s', got: '%s'", expected, result)
+	}
+}

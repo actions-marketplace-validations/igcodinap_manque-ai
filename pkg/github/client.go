@@ -219,15 +219,85 @@ func (c *Client) CreateOrUpdateComment(owner, repo string, number int, body stri
 	return nil
 }
 
+// ListReviewComments lists all review comments on a pull request
+func (c *Client) ListReviewComments(owner, repo string, number int) ([]*github.PullRequestComment, error) {
+	opts := &github.PullRequestListCommentsOptions{
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+	
+	var allComments []*github.PullRequestComment
+	for {
+		comments, resp, err := c.client.PullRequests.ListComments(c.ctx, owner, repo, number, opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list review comments: %w", err)
+		}
+		allComments = append(allComments, comments...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	
+	return allComments, nil
+}
+
 func (c *Client) CreateReview(owner, repo string, number int, comments []*github.DraftReviewComment, body *string) error {
+	// 1. Fetch existing comments to prevent duplicates
+	existingComments, err := c.ListReviewComments(owner, repo, number)
+	if err != nil {
+		return fmt.Errorf("failed to fetch existing comments: %w", err)
+	}
+
+	// 2. Create a "fingerprint" map of existing comments
+	// Key format: "filename:line:content"
+	existingMap := make(map[string]bool)
+	for _, ec := range existingComments {
+		if ec.Path == nil || ec.Body == nil {
+			continue
+		}
+		line := -1
+		if ec.Line != nil {
+			line = *ec.Line
+		} else if ec.OriginalLine != nil {
+			line = *ec.OriginalLine
+		}
+		key := fmt.Sprintf("%s:%d:%s", *ec.Path, line, strings.TrimSpace(*ec.Body))
+		existingMap[key] = true
+	}
+
+	// 3. Filter out new comments that already exist
+	var newComments []*github.DraftReviewComment
+	for _, comment := range comments {
+		if comment.Path == nil || comment.Body == nil {
+			continue
+		}
+		
+		// Note: DraftReviewComment uses 'Line' for the position/line
+		line := -1 
+		if comment.Line != nil {
+			line = *comment.Line 
+		}
+		
+		key := fmt.Sprintf("%s:%d:%s", *comment.Path, line, strings.TrimSpace(*comment.Body))
+		
+		if !existingMap[key] {
+			newComments = append(newComments, comment)
+		}
+	}
+
+	// 4. If nothing new to post, just return (or post body if it's new)
+	if len(newComments) == 0 && (body == nil || *body == "") {
+		return nil
+	}
+
 	event := "COMMENT"
 	review := &github.PullRequestReviewRequest{
 		Body:     body,
 		Event:    &event,
-		Comments: comments,
+		Comments: newComments,
 	}
 	
-	_, _, err := c.client.PullRequests.CreateReview(c.ctx, owner, repo, number, review)
+	_, _, err = c.client.PullRequests.CreateReview(c.ctx, owner, repo, number, review)
 	if err != nil {
 		return fmt.Errorf("failed to create review: %w", err)
 	}
