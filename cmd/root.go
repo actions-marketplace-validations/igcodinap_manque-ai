@@ -2,14 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
 	"github.com/manque-ai/internal"
 	"github.com/manque-ai/pkg/ai"
-	"github.com/manque-ai/pkg/diff"
 	"github.com/manque-ai/pkg/github"
+	"github.com/manque-ai/pkg/review"
 	"github.com/spf13/cobra"
 	gh "github.com/google/go-github/v60/github"
 )
@@ -35,6 +34,7 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 	rootCmd.Flags().IntVar(&prNumber, "pr", 0, "PR number to review")
 	rootCmd.Flags().StringVar(&prURL, "url", "", "GitHub PR URL to review")
 	rootCmd.Flags().StringVar(&repository, "repo", "", "Repository in format 'owner/repo'")
@@ -42,23 +42,26 @@ func init() {
 
 func runReview(cmd *cobra.Command, args []string) {
 	// Initialize logging
-	internal.InitLogger()
+	debug, _ := cmd.Flags().GetBool("debug")
+	internal.InitLogger(debug)
 	
 	config, err := internal.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		internal.Logger.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
+	}
+	// Action/Remote CLI always requires GitHub Token
+	if err := config.Validate(); err != nil {
+		internal.Logger.Error("Invalid configuration", "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize clients
 	githubClient := github.NewClient(config.GitHubToken, config.GitHubAPIURL)
-	aiClient, err := ai.NewClient(ai.Config{
-		Provider: config.LLMProvider,
-		APIKey:   config.LLMAPIKey,
-		Model:    config.LLMModel,
-		BaseURL:  config.LLMBaseURL,
-	})
+	engine, err := review.NewEngine(config)
 	if err != nil {
-		log.Fatalf("Failed to initialize AI client: %v", err)
+		internal.Logger.Error("Failed to initialize review engine", "error", err)
+		os.Exit(1)
 	}
 
 	// Get PR information
@@ -67,76 +70,51 @@ func runReview(cmd *cobra.Command, args []string) {
 		// Running as GitHub Action
 		prInfo, err = githubClient.GetPRFromEvent(config.GitHubEventPath)
 		if err != nil {
-			log.Fatalf("Failed to get PR from GitHub event: %v", err)
+			internal.Logger.Error("Failed to get PR from GitHub event", "error", err)
+			os.Exit(1)
 		}
 	} else if prURL != "" {
 		// CLI mode with URL
 		prInfo, err = githubClient.GetPRFromURL(prURL)
 		if err != nil {
-			log.Fatalf("Failed to get PR from URL: %v", err)
+			internal.Logger.Error("Failed to get PR from URL", "error", err)
+			os.Exit(1)
 		}
 	} else if repository != "" && prNumber > 0 {
 		// CLI mode with repo and PR number
 		parts := strings.Split(repository, "/")
 		if len(parts) != 2 {
-			log.Fatalf("Invalid repository format. Use 'owner/repo'")
+			internal.Logger.Error("Invalid repository format. Use 'owner/repo'")
+			os.Exit(1)
 		}
 		prInfo, err = githubClient.GetPR(parts[0], parts[1], prNumber)
 		if err != nil {
-			log.Fatalf("Failed to get PR: %v", err)
+			internal.Logger.Error("Failed to get PR", "error", err)
+			os.Exit(1)
 		}
 	} else {
-		log.Fatalf("Must provide either GITHUB_EVENT_PATH (for Actions) or --url/--repo+--pr (for CLI)")
+		internal.Logger.Error("Must provide either GITHUB_EVENT_PATH (for Actions) or --url/--repo+--pr (for CLI)")
+		os.Exit(1)
 	}
 
-	fmt.Printf("Reviewing PR #%d: %s\n", prInfo.Number, prInfo.Title)
+	internal.Logger.Info("Reviewing PR", "number", prInfo.Number, "title", prInfo.Title)
 
-	// Parse the diff
-	files, err := diff.ParseGitDiff(prInfo.Diff)
+	// Run Review
+	// Note: We use ReviewWithContext since we have the full PR details
+	summary, result, err := engine.ReviewWithContext(prInfo.Title, prInfo.Description, prInfo.Diff)
 	if err != nil {
-		log.Fatalf("Failed to parse diff: %v", err)
-	}
-
-	formattedDiff := diff.FormatForLLM(files)
-
-	// Check for large diffs and truncate if necessary (limit to ~100k characters for safety)
-	// Most LLMs have around 128k context, we leave room for system prompt and output
-	const maxDiffSize = 100000
-	if len(formattedDiff) > maxDiffSize {
-		fmt.Printf("⚠️ Diff is too large (%d chars), truncating to %d chars...\n", len(formattedDiff), maxDiffSize)
-		// Handle UTF-8 safe truncation
-		runes := []rune(formattedDiff)
-		if len(runes) > maxDiffSize {
-			formattedDiff = string(runes[:maxDiffSize]) + "\n... (truncated due to size limit)"
-		}
-	}
-
-	// Generate PR summary
-	fmt.Println("Generating PR summary...")
-	summary, err := aiClient.GeneratePRSummary(prInfo.Title, prInfo.Description, formattedDiff)
-	if err != nil {
-		log.Fatalf("Failed to generate PR summary: %v", err)
-	}
-
-	// Generate code review
-	fmt.Println("Generating code review...")
-	var review *ai.ReviewResult
-	if config.StyleGuideRules != "" {
-		review, err = aiClient.GenerateCodeReviewWithStyleGuide(prInfo.Title, prInfo.Description, formattedDiff, config.StyleGuideRules)
-	} else {
-		review, err = aiClient.GenerateCodeReview(prInfo.Title, prInfo.Description, formattedDiff)
-	}
-	if err != nil {
-		log.Fatalf("Failed to generate code review: %v", err)
+		internal.Logger.Error("Review failed", "error", err)
+		os.Exit(1)
 	}
 
 	// Post results to GitHub
-	err = postResultsToGitHub(githubClient, prInfo, summary, review, config)
+	err = postResultsToGitHub(githubClient, prInfo, summary, result, config)
 	if err != nil {
-		log.Fatalf("Failed to post results to GitHub: %v", err)
+		internal.Logger.Error("Failed to post results to GitHub", "error", err)
+		os.Exit(1)
 	}
 
-	fmt.Println("✅ Review completed successfully!")
+	internal.Logger.Info("✅ Review completed successfully!")
 }
 
 func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, summary *ai.PRSummary, review *ai.ReviewResult, config *internal.Config) error {
