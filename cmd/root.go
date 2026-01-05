@@ -20,7 +20,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ai-reviewer",
+	Use:   "manque-ai",
 	Short: "AI-powered Pull Request reviewer",
 	Long:  `A robust Golang binary that reviews Pull Requests using LLMs (OpenAI, Anthropic, Google, OpenRouter).`,
 	Run:   runReview,

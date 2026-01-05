@@ -35,7 +35,7 @@ Review your changes locally without pushing to GitHub. This is perfect for catch
 go install github.com/manque-ai/manque-ai@latest
 # or build from source
 git clone https://github.com/manque-ai/manque-ai
-cd manque-ai && go build -o ai-reviewer .
+cd manque-ai && go build -o manque-ai .
 ```
 
 ### 2. Setup (One-time)
@@ -80,13 +80,13 @@ export LLM_MODEL=anthropic/claude-3.5-sonnet
 ### 3. Run Review
 ```bash
 # Review changes in your current branch vs main
-ai-reviewer local
+manque-ai local
 
 # Compare specific branches
-ai-reviewer local --base develop --head feature-login
+manque-ai local --base develop --head feature-login
 
 # Debug mode (see exact API calls and diff sizes)
-ai-reviewer local --debug
+manque-ai local --debug
 ```
 
 ---
@@ -108,7 +108,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: AI Reviewer
+      - name: Manque AI
         uses: docker://ghcr.io/igcodinap/manque-ai:latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -137,10 +137,10 @@ The CLI can also be used to review remote PRs or check GitHub Actions context.
 
 ```bash
 # Review a specific remote PR
-ai-reviewer --repo owner/repo --pr 123
+manque-ai --repo owner/repo --pr 123
 
 # Review by URL
-ai-reviewer --url https://github.com/owner/repo/pull/123
+manque-ai --url https://github.com/owner/repo/pull/123
 ```
 
 ---
