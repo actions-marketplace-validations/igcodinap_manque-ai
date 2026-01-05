@@ -152,7 +152,7 @@ func FormatOutput(summary *ai.PRSummary, review *ai.ReviewResult) string {
 	if len(critical) > 0 {
 		builder.WriteString("🔴 **Critical Issues**\n")
 		for _, comment := range critical {
-			builder.WriteString(fmt.Sprintf("- **%s:%d** - %s\n", comment.File, comment.StartLine, comment.Header))
+			builder.WriteString(fmt.Sprintf("- **%s:%d** - %s\n  > %s\n", comment.File, comment.StartLine, comment.Header, strings.ReplaceAll(comment.Content, "\n", "\n  > ")))
 		}
 		builder.WriteString("\n")
 	}
@@ -160,7 +160,7 @@ func FormatOutput(summary *ai.PRSummary, review *ai.ReviewResult) string {
 	if len(warnings) > 0 {
 		builder.WriteString("🟡 **Warnings**\n")
 		for _, comment := range warnings {
-			builder.WriteString(fmt.Sprintf("- **%s:%d** - %s\n", comment.File, comment.StartLine, comment.Header))
+			builder.WriteString(fmt.Sprintf("- **%s:%d** - %s\n  > %s\n", comment.File, comment.StartLine, comment.Header, strings.ReplaceAll(comment.Content, "\n", "\n  > ")))
 		}
 		builder.WriteString("\n")
 	}
@@ -168,7 +168,7 @@ func FormatOutput(summary *ai.PRSummary, review *ai.ReviewResult) string {
 	if len(suggestions) > 0 {
 		builder.WriteString("💡 **Suggestions**\n")
 		for _, comment := range suggestions {
-			builder.WriteString(fmt.Sprintf("- **%s:%d** - %s\n", comment.File, comment.StartLine, comment.Header))
+			builder.WriteString(fmt.Sprintf("- **%s:%d** - %s\n  > %s\n", comment.File, comment.StartLine, comment.Header, strings.ReplaceAll(comment.Content, "\n", "\n  > ")))
 		}
 		builder.WriteString("\n")
 	}

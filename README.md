@@ -39,21 +39,20 @@ cd manque-ai && go build -o ai-reviewer .
 ```
 
 ### 2. Setup (One-time)
-Set your LLM credentials. **Note: `GH_TOKEN` is OPTIONAL for local runs!**
+You can set your LLM credentials as environment variables or using a **`.env` file** in the project root. **Note: `GH_TOKEN` is OPTIONAL for local runs!**
 
+#### Option A: Using a .env file (Recommended)
+Copy the example file and fill in your keys:
+```bash
+cp .env.example .env
+# Edit .env and add your LLM_API_KEY
+```
+
+#### Option B: Exporting variables
 ```bash
 # OpenAI
 export LLM_PROVIDER=openai
 export LLM_API_KEY=sk-...
-
-# Or Anthropic
-export LLM_PROVIDER=anthropic
-export LLM_API_KEY=sk-ant-...
-
-# Or OpenRouter
-export LLM_PROVIDER=openrouter
-export LLM_API_KEY=sk-or-...
-export LLM_MODEL=anthropic/claude-3.5-sonnet
 ```
 
 ### 3. Run Review

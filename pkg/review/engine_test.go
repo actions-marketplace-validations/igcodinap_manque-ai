@@ -66,6 +66,7 @@ func TestFormatOutput(t *testing.T) {
 		"| `file1.go` | Added logic |",
 		"🔴 **Critical Issues**",
 		"- **file1.go:10** - 🔴 Bug detected",
+		"> Fix this bug",
 		"**Quality Score**: 90/100",
 	}
 

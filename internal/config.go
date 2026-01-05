@@ -3,6 +3,8 @@ package internal
 import (
 	"fmt"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -34,6 +36,9 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
+	// Load .env file if it exists
+	_ = godotenv.Load()
+
 	config := &Config{
 		GitHubToken:     getEnvWithFallbacks("GH_TOKEN", "GITHUB_TOKEN"),
 		GitHubAPIURL:    getEnvWithDefault("GITHUB_API_URL", "https://api.github.com"),
