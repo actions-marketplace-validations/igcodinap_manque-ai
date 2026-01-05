@@ -53,7 +53,11 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 	}
 
 	// 3. Discover repo practices (if enabled)
-	noDiscover, _ := cmd.Flags().GetBool("no-discover")
+	noDiscover, err := cmd.Flags().GetBool("no-discover")
+	if err != nil {
+		internal.Logger.Warn("Could not parse --no-discover flag, defaulting to discovery enabled", "error", err)
+		noDiscover = false
+	}
 	if !noDiscover && config.AutoDiscoverPractices {
 		cwd, err := os.Getwd()
 		if err != nil {

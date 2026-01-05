@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
 // MaxPracticesSize is the maximum size in bytes for combined practices content.
 // This prevents overwhelming the LLM context window.
 const MaxPracticesSize = 15000
+
+// MaxFileSize is the maximum size in bytes for a single practice file.
+const MaxFileSize = 8000
 
 // RepoPractices holds discovered repository practices and guidelines
 type RepoPractices struct {
@@ -152,15 +156,13 @@ func scanDirectory(practices *RepoPractices, dirPath, patternName string, extens
 
 // readFileWithLimit reads a file up to a reasonable size limit
 func readFileWithLimit(path string) (string, error) {
-	const maxFileSize = 8000 // Max bytes per file
-
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", err
 	}
 
 	// Skip very large files
-	if info.Size() > maxFileSize*2 {
+	if info.Size() > MaxFileSize*2 {
 		return "", nil
 	}
 
@@ -171,8 +173,8 @@ func readFileWithLimit(path string) (string, error) {
 
 	// Truncate if needed
 	text := string(content)
-	if len(text) > maxFileSize {
-		text = text[:maxFileSize] + "\n... (truncated)"
+	if len(text) > MaxFileSize {
+		text = text[:MaxFileSize] + "\n... (truncated)"
 	}
 
 	return strings.TrimSpace(text), nil
@@ -192,14 +194,7 @@ func buildCombinedOutput(sources map[string]string) string {
 	for path := range sources {
 		sortedPaths = append(sortedPaths, path)
 	}
-	// Simple sort for reproducibility
-	for i := 0; i < len(sortedPaths); i++ {
-		for j := i + 1; j < len(sortedPaths); j++ {
-			if sortedPaths[i] > sortedPaths[j] {
-				sortedPaths[i], sortedPaths[j] = sortedPaths[j], sortedPaths[i]
-			}
-		}
-	}
+	sort.Strings(sortedPaths)
 
 	for _, path := range sortedPaths {
 		content := sources[path]
