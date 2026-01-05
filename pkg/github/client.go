@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v60/github"
+	"github.com/manque-ai/internal"
 	"golang.org/x/oauth2"
 )
 
@@ -242,14 +243,17 @@ func (c *Client) ListReviewComments(owner, repo string, number int) ([]*github.P
 }
 
 func (c *Client) CreateReview(owner, repo string, number int, comments []*github.DraftReviewComment, body *string) error {
+	internal.Logger.Debug("CreateReview called", "incoming_comments", len(comments))
+	
 	// 1. Fetch existing comments to prevent duplicates
 	existingComments, err := c.ListReviewComments(owner, repo, number)
 	if err != nil {
 		return fmt.Errorf("failed to fetch existing comments: %w", err)
 	}
+	internal.Logger.Debug("Fetched existing comments from GitHub", "count", len(existingComments))
 
 	// 2. Create a "fingerprint" map of existing comments
-	// Key format: "filename:line:content"
+	// Key format: "filename:startLine:endLine:content"
 	existingMap := make(map[string]bool)
 	for _, ec := range existingComments {
 		if ec.Path == nil || ec.Body == nil {
@@ -269,9 +273,11 @@ func (c *Client) CreateReview(owner, repo string, number int, comments []*github
 		key := fmt.Sprintf("%s:%d:%d:%s", *ec.Path, startLine, endLine, strings.TrimSpace(*ec.Body))
 		existingMap[key] = true
 	}
+	internal.Logger.Debug("Built existing comment fingerprints", "unique_fingerprints", len(existingMap))
 
 	// 3. Filter out new comments that already exist
 	var newComments []*github.DraftReviewComment
+	skippedDuplicates := 0
 	for _, comment := range comments {
 		if comment.Path == nil || comment.Body == nil {
 			continue
@@ -291,11 +297,16 @@ func (c *Client) CreateReview(owner, repo string, number int, comments []*github
 		
 		if !existingMap[key] {
 			newComments = append(newComments, comment)
+		} else {
+			skippedDuplicates++
+			internal.Logger.Debug("Skipping duplicate comment", "path", *comment.Path, "startLine", startLine, "endLine", endLine)
 		}
 	}
+	internal.Logger.Debug("Filtered comments", "new_comments", len(newComments), "skipped_duplicates", skippedDuplicates)
 
 	// 4. If nothing new to post, just return (or post body if it's new)
 	if len(newComments) == 0 && (body == nil || *body == "") {
+		internal.Logger.Debug("No new comments to post, returning early")
 		return nil
 	}
 
@@ -306,6 +317,7 @@ func (c *Client) CreateReview(owner, repo string, number int, comments []*github
 		Comments: newComments,
 	}
 	
+	internal.Logger.Debug("Posting review to GitHub", "comment_count", len(newComments))
 	_, _, err = c.client.PullRequests.CreateReview(c.ctx, owner, repo, number, review)
 	if err != nil {
 		return fmt.Errorf("failed to create review: %w", err)
