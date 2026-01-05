@@ -255,13 +255,18 @@ func (c *Client) CreateReview(owner, repo string, number int, comments []*github
 		if ec.Path == nil || ec.Body == nil {
 			continue
 		}
-		line := -1
-		if ec.Line != nil {
-			line = *ec.Line
-		} else if ec.OriginalLine != nil {
-			line = *ec.OriginalLine
+		// Build fingerprint using both start and end lines for multi-line comments
+		startLine := 0
+		endLine := 0
+		if ec.StartLine != nil {
+			startLine = *ec.StartLine
 		}
-		key := fmt.Sprintf("%s:%d:%s", *ec.Path, line, strings.TrimSpace(*ec.Body))
+		if ec.Line != nil {
+			endLine = *ec.Line
+		} else if ec.OriginalLine != nil {
+			endLine = *ec.OriginalLine
+		}
+		key := fmt.Sprintf("%s:%d:%d:%s", *ec.Path, startLine, endLine, strings.TrimSpace(*ec.Body))
 		existingMap[key] = true
 	}
 
@@ -272,13 +277,17 @@ func (c *Client) CreateReview(owner, repo string, number int, comments []*github
 			continue
 		}
 		
-		// Note: DraftReviewComment uses 'Line' for the position/line
-		line := -1 
+		// Build fingerprint using both start and end lines
+		startLine := 0
+		endLine := 0
+		if comment.StartLine != nil {
+			startLine = *comment.StartLine
+		}
 		if comment.Line != nil {
-			line = *comment.Line 
+			endLine = *comment.Line
 		}
 		
-		key := fmt.Sprintf("%s:%d:%s", *comment.Path, line, strings.TrimSpace(*comment.Body))
+		key := fmt.Sprintf("%s:%d:%d:%s", *comment.Path, startLine, endLine, strings.TrimSpace(*comment.Body))
 		
 		if !existingMap[key] {
 			newComments = append(newComments, comment)
