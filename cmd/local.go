@@ -78,38 +78,46 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 	}
 
 	// 4. Get Git Diff
-	internal.Logger.Info("Getting git diff...", "base", baseBranch, "head", headBranch)
+	mock, _ := cmd.Flags().GetBool("mock")
+	var diffContent string
+
+	if mock {
+		internal.Logger.Info("Running in MOCK mode... skipping git diff")
+		diffContent = "mock diff content"
+	} else {
+		internal.Logger.Info("Getting git diff...", "base", baseBranch, "head", headBranch)
+		
+		// Check if git is available
+		if _, err := exec.LookPath("git"); err != nil {
+			internal.Logger.Error("Git not found in PATH")
+			return
+		}
 	
-	// Check if git is available
-	if _, err := exec.LookPath("git"); err != nil {
-		internal.Logger.Error("Git not found in PATH")
-		return
+		// Run git diff
+		// Use merge-base to find common ancestor for better diff
+		mergeBaseCmd := exec.Command("git", "merge-base", baseBranch, headBranch)
+		mergeBaseOut, err := mergeBaseCmd.Output()
+		if err != nil {
+			internal.Logger.Error("Failed to find merge base. Are branches valid?", "error", err)
+			return
+		}
+		commonAncestor := strings.TrimSpace(string(mergeBaseOut))
+	
+		diffCmd := exec.Command("git", "diff", commonAncestor, headBranch)
+		diffOut, err := diffCmd.Output()
+		if err != nil {
+			internal.Logger.Error("Failed to git diff", "error", err)
+			return
+		}
+	
+		diffContent = string(diffOut)
+		if len(diffContent) == 0 {
+			fmt.Println("No changes detected between branches.")
+			return
+		}
+	
+		internal.Logger.Debug("Diff retrieved", "size", len(diffContent))
 	}
-
-	// Run git diff
-	// Use merge-base to find common ancestor for better diff
-	mergeBaseCmd := exec.Command("git", "merge-base", baseBranch, headBranch)
-	mergeBaseOut, err := mergeBaseCmd.Output()
-	if err != nil {
-		internal.Logger.Error("Failed to find merge base. Are branches valid?", "error", err)
-		return
-	}
-	commonAncestor := strings.TrimSpace(string(mergeBaseOut))
-
-	diffCmd := exec.Command("git", "diff", commonAncestor, headBranch)
-	diffOut, err := diffCmd.Output()
-	if err != nil {
-		internal.Logger.Error("Failed to git diff", "error", err)
-		return
-	}
-
-	diffContent := string(diffOut)
-	if len(diffContent) == 0 {
-		fmt.Println("No changes detected between branches.")
-		return
-	}
-
-	internal.Logger.Debug("Diff retrieved", "size", len(diffContent))
 
 	// 3. Init Engine
 	// We need to manually construct config or fix the validation issue.
@@ -125,7 +133,6 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 	var summary *ai.PRSummary
 	var result *ai.ReviewResult
 	
-	mock, _ := cmd.Flags().GetBool("mock")
 	if mock {
 		internal.Logger.Info("Running in MOCK mode...")
 		// Use manual PRSummary with fields that match ai/types.go
@@ -140,27 +147,31 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 				{Filename: "internal/config.go", Summary: "Refactored validation to support optional GitHub tokens."},
 			},
 		}
-		result = &ai.ReviewResult{
+			result = &ai.ReviewResult{
 			Review: ai.ReviewSummary{
-				Score:            95,
-				EstimatedEffort:  1,
+				Score:            85,
+				EstimatedEffort:  2,
 				HasRelevantTests: true,
-				SecurityConcerns: "None detected in this mock run.",
+				SecurityConcerns: "None detected.",
 			},
 			Comments: []ai.Comment{
 				{
-					File:      "cmd/local.go",
-					StartLine: 80,
-					Header:    "💡 Pro Tip",
-					Content:   "You can use the --mock flag anytime to verify the output formatting without burning API tokens.",
-					Label:     "suggestion",
+					File:      "internal/payments/service/integration_test.go",
+					StartLine: 104,
+					EndLine:   106,
+					Header:    "Remove duplicate line.",
+					Content:   "Line 105 is a duplicate of line 104.",
+					Label:     "potential_issue",
+					HighlightedCode: " 	r.payments[p.ID] = p\n-	r.payments[p.ID] = p\n 	return p, nil",
 				},
 				{
-					File:      "README.md",
-					StartLine: 1,
-					Header:    "🔴 Documentation Gap",
-					Content:   "Consider adding a screenshot of this output to the README to make it even more appealing!",
-					Label:     "documentation",
+					File:      "internal/app/payments_initializer.go",
+					StartLine: 22,
+					EndLine:   31,
+					Header:    "Add validation for required environment variables.",
+					Content:   "The initializer reads MERCADOPAGO_ACCESS_TOKEN and MERCADOPAGO_WEBHOOK_SECRET without validating they are set. An empty access token will cause all payment API calls to fail with unhelpful errors. Consider validating and logging a warning or returning an error.",
+					Label:     "potential_issue",
+					HighlightedCode: " func initializePayments(sqlDB *sql.DB) PaymentsComponents {\n 	// Get MercadoPago config from environment\n 	mpAccessToken := os.Getenv(\"MERCADOPAGO_ACCESS_TOKEN\")\n 	mpWebhookSecret := os.Getenv(\"MERCADOPAGO_WEBHOOK_SECRET\")\n+\n+\tif mpAccessToken == \"\" {\n+\t\t// Log warning - payments will fail without token\n+\t\t// Consider using slog here or returning an error\n+\t\tpanic(\"MERCADOPAGO_ACCESS_TOKEN environment variable is required\")\n+\t}\n \n 	// Create MercadoPago client\n 	mpClient := mercadopago.NewClient(mercadopago.ClientConfig{",
 				},
 			},
 		}

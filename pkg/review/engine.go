@@ -151,59 +151,66 @@ func (e *Engine) getCombinedRules() string {
 // FormatOutput generates the standard markdown report
 func FormatOutput(summary *ai.PRSummary, review *ai.ReviewResult) string {
 	var builder strings.Builder
+
+	// We can still print the summary at the top if desired, or skip it to match the requested "structure" exactly.
+	// The user request shows file-based comments.
+	// However, usually a summary is nice. I will keep the summary but format the comments as requested.
 	
 	builder.WriteString("🐰 **Executive Summary**\n")
 	builder.WriteString(summary.Description + "\n\n")
-	
-	builder.WriteString("🔍 **Walkthrough**\n")
-	builder.WriteString("| File | Summary |\n")
-	builder.WriteString("|------|----------|\n")
-	for _, file := range summary.Files {
-		builder.WriteString(fmt.Sprintf("| `%s` | %s |\n", file.Filename, file.Summary))
+
+	if len(review.Comments) == 0 {
+		builder.WriteString("No issues found! 🎉\n")
+		return builder.String()
 	}
-	builder.WriteString("\n")
-	
-	// Group comments
-	var critical, warnings, suggestions []ai.Comment
+
 	for _, comment := range review.Comments {
-		switch {
-		case comment.Critical || comment.Label == "security" || strings.Contains(comment.Header, "🔴"):
-			critical = append(critical, comment)
-		case comment.Label == "bug" || strings.Contains(comment.Header, "🟡"):
-			warnings = append(warnings, comment)
-		default:
-			suggestions = append(suggestions, comment)
+		// Determine Type
+		issueType := comment.Label
+		if issueType == "" {
+			issueType = "potential_issue"
 		}
-	}
-	
-	if len(critical) > 0 {
-		builder.WriteString("🔴 **Critical Issues**\n")
-		for _, comment := range critical {
-			builder.WriteString(fmt.Sprintf("- **%s:%d** - %s\n  > %s\n", comment.File, comment.StartLine, comment.Header, strings.ReplaceAll(comment.Content, "\n", "\n  > ")))
+		if comment.Critical {
+			issueType = "critical_issue"
 		}
-		builder.WriteString("\n")
-	}
-	
-	if len(warnings) > 0 {
-		builder.WriteString("🟡 **Warnings**\n")
-		for _, comment := range warnings {
-			builder.WriteString(fmt.Sprintf("- **%s:%d** - %s\n  > %s\n", comment.File, comment.StartLine, comment.Header, strings.ReplaceAll(comment.Content, "\n", "\n  > ")))
+
+		builder.WriteString("============================================================================\n")
+		builder.WriteString(fmt.Sprintf("File: %s\n", comment.File))
+		if comment.EndLine > 0 && comment.EndLine > comment.StartLine {
+			builder.WriteString(fmt.Sprintf("Line: %d to %d\n", comment.StartLine, comment.EndLine))
+		} else if comment.StartLine > 0 {
+			builder.WriteString(fmt.Sprintf("Line: %d\n", comment.StartLine))
+		} else {
+			builder.WriteString("Line: (unknown)\n")
 		}
-		builder.WriteString("\n")
-	}
-	
-	if len(suggestions) > 0 {
-		builder.WriteString("💡 **Suggestions**\n")
-		for _, comment := range suggestions {
-			builder.WriteString(fmt.Sprintf("- **%s:%d** - %s\n  > %s\n", comment.File, comment.StartLine, comment.Header, strings.ReplaceAll(comment.Content, "\n", "\n  > ")))
+		builder.WriteString(fmt.Sprintf("Type: %s\n\n", issueType))
+
+		// Clean up Header (remove emoji if present for the "Comment" section?)
+		// The user example had "Comment:\nRemove duplicate line.\n\nLine 105..."
+		// Our Header is usually short. Content is longer.
+		// Let's combine them or just use Header as title.
+		
+		builder.WriteString("Comment:\n")
+		if comment.Header != "" {
+			builder.WriteString(comment.Header + "\n\n")
 		}
-		builder.WriteString("\n")
+		builder.WriteString(comment.Content + "\n\n")
+
+		if comment.HighlightedCode != "" {
+			builder.WriteString(comment.HighlightedCode + "\n\n")
+		}
+
+		builder.WriteString("Prompt for AI Agent:\n")
+		// Construct the agent prompt
+		// "In @<file> around lines <start> - <end>, <content/instruction>"
+		agentPrompt := fmt.Sprintf("In @%s around lines %d - %d, %s", 
+			comment.File, 
+			comment.StartLine, 
+			comment.EndLine, 
+			strings.ReplaceAll(comment.Content, "\n", " "))
+		
+		builder.WriteString(agentPrompt + "\n\n")
 	}
-	
-	builder.WriteString(fmt.Sprintf("**Quality Score**: %d/100 | **Review Effort**: %d/5 | **Security**: %s",
-		review.Review.Score, 
-		review.Review.EstimatedEffort,
-		review.Review.SecurityConcerns))
-	
+
 	return builder.String()
 }
