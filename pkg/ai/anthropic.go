@@ -10,10 +10,10 @@ type AnthropicClient struct {
 }
 
 type AnthropicRequest struct {
-	Model     string                 `json:"model"`
-	MaxTokens int                    `json:"max_tokens"`
-	Messages  []AnthropicMessage     `json:"messages"`
-	System    string                 `json:"system,omitempty"`
+	Model     string             `json:"model"`
+	MaxTokens int                `json:"max_tokens"`
+	Messages  []AnthropicMessage `json:"messages"`
+	System    string             `json:"system,omitempty"`
 }
 
 type AnthropicMessage struct {
@@ -37,12 +37,12 @@ func NewAnthropicClient(config Config) *AnthropicClient {
 	if baseURL == "" {
 		baseURL = "https://api.anthropic.com"
 	}
-	
+
 	headers := map[string]string{
 		"x-api-key":         config.APIKey,
 		"anthropic-version": "2023-06-01",
 	}
-	
+
 	return &AnthropicClient{
 		BaseClient: NewBaseClient(config.APIKey, config.Model, baseURL, headers),
 	}
@@ -51,7 +51,7 @@ func NewAnthropicClient(config Config) *AnthropicClient {
 func (c *AnthropicClient) GeneratePRSummary(prTitle, prDescription, diff string) (*PRSummary, error) {
 	systemPrompt := GetPRSummaryPrompt()
 	userPrompt := fmt.Sprintf("PR Title: %s\n\nPR Description: %s\n\nGit Diff:\n%s", prTitle, prDescription, diff)
-	
+
 	request := AnthropicRequest{
 		Model:     c.model,
 		MaxTokens: 4096,
@@ -60,32 +60,32 @@ func (c *AnthropicClient) GeneratePRSummary(prTitle, prDescription, diff string)
 			{Role: "user", Content: userPrompt},
 		},
 	}
-	
+
 	respBytes, err := c.makeRequest("/v1/messages", request)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var response AnthropicResponse
 	if err := json.Unmarshal(respBytes, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if response.Error != nil {
 		return nil, fmt.Errorf("API error: %s", response.Error.Message)
 	}
-	
+
 	if len(response.Content) == 0 {
 		return nil, fmt.Errorf("no response content returned")
 	}
-	
+
 	content := extractJSONFromResponse(response.Content[0].Text)
-	
+
 	var summary PRSummary
 	if err := json.Unmarshal([]byte(content), &summary); err != nil {
 		return nil, fmt.Errorf("failed to parse PR summary JSON: %w", err)
 	}
-	
+
 	return &summary, nil
 }
 
@@ -100,9 +100,9 @@ func (c *AnthropicClient) GenerateCodeReviewWithStyleGuide(prTitle, prDescriptio
 	} else {
 		systemPrompt = GetCodeReviewPrompt()
 	}
-	
+
 	userPrompt := fmt.Sprintf("PR Title: %s\n\nPR Description: %s\n\nGit Diff:\n%s", prTitle, prDescription, diff)
-	
+
 	request := AnthropicRequest{
 		Model:     c.model,
 		MaxTokens: 4096,
@@ -111,25 +111,25 @@ func (c *AnthropicClient) GenerateCodeReviewWithStyleGuide(prTitle, prDescriptio
 			{Role: "user", Content: userPrompt},
 		},
 	}
-	
+
 	respBytes, err := c.makeRequest("/v1/messages", request)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var response AnthropicResponse
 	if err := json.Unmarshal(respBytes, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if response.Error != nil {
 		return nil, fmt.Errorf("API error: %s", response.Error.Message)
 	}
-	
+
 	if len(response.Content) == 0 {
 		return nil, fmt.Errorf("no response content returned")
 	}
-	
+
 	content := extractJSONFromResponse(response.Content[0].Text)
 
 	var review ReviewResult

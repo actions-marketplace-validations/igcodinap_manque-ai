@@ -319,19 +319,19 @@ func (e *Engine) getBlameContext(files []diff.FileDiff) string {
 // getCombinedRules combines discovered practices with user-provided style guide rules
 func (e *Engine) getCombinedRules() string {
 	var parts []string
-	
+
 	if e.Config.DiscoveredPractices != "" {
 		parts = append(parts, "## Repository Practices (Auto-Discovered)\n\n"+e.Config.DiscoveredPractices)
 	}
-	
+
 	if e.Config.StyleGuideRules != "" {
 		parts = append(parts, "## Custom Style Guide Rules\n\n"+e.Config.StyleGuideRules)
 	}
-	
+
 	if len(parts) == 0 {
 		return ""
 	}
-	
+
 	return strings.Join(parts, "\n\n---\n\n")
 }
 
@@ -342,7 +342,7 @@ func FormatOutput(summary *ai.PRSummary, review *ai.ReviewResult) string {
 	// We can still print the summary at the top if desired, or skip it to match the requested "structure" exactly.
 	// The user request shows file-based comments.
 	// However, usually a summary is nice. I will keep the summary but format the comments as requested.
-	
+
 	builder.WriteString("🐰 **Executive Summary**\n")
 	builder.WriteString(summary.Description + "\n\n")
 
@@ -376,7 +376,7 @@ func FormatOutput(summary *ai.PRSummary, review *ai.ReviewResult) string {
 		// The user example had "Comment:\nRemove duplicate line.\n\nLine 105..."
 		// Our Header is usually short. Content is longer.
 		// Let's combine them or just use Header as title.
-		
+
 		builder.WriteString("Comment:\n")
 		if comment.Header != "" {
 			builder.WriteString(comment.Header + "\n\n")
@@ -401,12 +401,12 @@ func FormatOutput(summary *ai.PRSummary, review *ai.ReviewResult) string {
 		builder.WriteString("Prompt for AI Agent:\n")
 		// Construct the agent prompt
 		// "In @<file> around lines <start> - <end>, <content/instruction>"
-		agentPrompt := fmt.Sprintf("In @%s around lines %d - %d, %s", 
-			comment.File, 
-			comment.StartLine, 
-			comment.EndLine, 
+		agentPrompt := fmt.Sprintf("In @%s around lines %d - %d, %s",
+			comment.File,
+			comment.StartLine,
+			comment.EndLine,
 			strings.ReplaceAll(comment.Content, "\n", " "))
-		
+
 		builder.WriteString(agentPrompt + "\n\n")
 	}
 

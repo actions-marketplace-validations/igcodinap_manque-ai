@@ -60,9 +60,9 @@ type WebhookPayload struct {
 		User struct {
 			Login string `json:"login"`
 		} `json:"user"`
-		Path     *string `json:"path"`      // File path for review comments
-		Position *int    `json:"position"`  // Line position for review comments
-		Line     *int    `json:"line"`      // Line number for review comments
+		Path     *string `json:"path"`     // File path for review comments
+		Position *int    `json:"position"` // Line position for review comments
+		Line     *int    `json:"line"`     // Line number for review comments
 	} `json:"comment"`
 	Repository struct {
 		FullName string `json:"full_name"`

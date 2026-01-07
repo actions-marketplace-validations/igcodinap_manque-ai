@@ -1,13 +1,13 @@
 package ai
 
 type PRSummary struct {
-	Title       string `json:"title"`       // Max 10 words
-	Description string `json:"description"`
-	Type        []string `json:"type"`      // e.g., BUG, ENHANCEMENT
+	Title       string   `json:"title"` // Max 10 words
+	Description string   `json:"description"`
+	Type        []string `json:"type"` // e.g., BUG, ENHANCEMENT
 	Files       []struct {
 		Filename string `json:"filename"`
-		Summary  string `json:"summary"`    // Max 70 words
-		Title    string `json:"title"`      // 5-10 words
+		Summary  string `json:"summary"` // Max 70 words
+		Title    string `json:"title"`   // 5-10 words
 	} `json:"files"`
 }
 
@@ -64,13 +64,13 @@ type Comment struct {
 	HighlightedCode string `json:"highlighted_code"`
 	Header          string `json:"header"`
 	Content         string `json:"content"`
-	Label           string `json:"label"`    // e.g. "bug", "security"
+	Label           string `json:"label"` // e.g. "bug", "security"
 	Critical        bool   `json:"critical"`
 	SuggestedCode   string `json:"suggested_code,omitempty"` // GitHub suggestion block content
 }
 
 type ChatMessage struct {
-	Role    string `json:"role"`    // "system", "user", "assistant"
+	Role    string `json:"role"` // "system", "user", "assistant"
 	Content string `json:"content"`
 }
 

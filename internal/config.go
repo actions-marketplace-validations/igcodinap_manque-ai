@@ -36,11 +36,11 @@ type Config struct {
 	// Review action settings
 	AutoApproveThreshold int  // Score threshold for auto-approve (default: 90)
 	BlockOnCritical      bool // Request changes when critical issues found (default: true)
-	
+
 	// CLI settings
-	Debug bool
+	Debug                bool
 	SkipGitHubValidation bool
-	
+
 	// Discovery settings
 	AutoDiscoverPractices bool   // Enable auto-discovery of repo practices (default: true)
 	DiscoveredPractices   string // Content discovered from repo practice files

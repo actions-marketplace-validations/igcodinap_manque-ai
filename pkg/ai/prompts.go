@@ -167,7 +167,7 @@ func GetCodeReviewPrompt() string {
 
 func GetCodeReviewPromptWithStyleGuide(styleGuideRules string) string {
 	prompt := strings.TrimSpace(codeReviewPrompt)
-	
+
 	if styleGuideRules != "" {
 		additionalRules := `
 
@@ -176,10 +176,10 @@ Additional project-specific rules to consider during review:
 
 ` + styleGuideRules + `
 </custom_style_guide>`
-		
+
 		// Insert the custom rules before the closing </system_configuration> tag
 		prompt = strings.Replace(prompt, "</system_configuration>", additionalRules+"\n</system_configuration>", 1)
 	}
-	
+
 	return prompt
 }

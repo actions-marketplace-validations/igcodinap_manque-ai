@@ -16,8 +16,8 @@ type ImpactAnalyzer struct {
 
 // SymbolTable stores all symbols across the codebase
 type SymbolTable struct {
-	Symbols    map[string][]Symbol   // symbol name -> symbols (can have multiple with same name)
-	ByFile     map[string][]Symbol   // file path -> symbols in that file
+	Symbols    map[string][]Symbol    // symbol name -> symbols (can have multiple with same name)
+	ByFile     map[string][]Symbol    // file path -> symbols in that file
 	References map[string][]Reference // symbol name -> references to it
 }
 
@@ -30,12 +30,12 @@ type Reference struct {
 
 // Impact represents the impact of changing a symbol
 type Impact struct {
-	ChangedSymbol  Symbol      `json:"changed_symbol"`
-	AffectedFiles  []string    `json:"affected_files"`
+	ChangedSymbol   Symbol      `json:"changed_symbol"`
+	AffectedFiles   []string    `json:"affected_files"`
 	AffectedSymbols []Symbol    `json:"affected_symbols"`
-	References     []Reference `json:"references"`
-	Severity       string      `json:"severity"` // "low", "medium", "high", "critical"
-	Description    string      `json:"description"`
+	References      []Reference `json:"references"`
+	Severity        string      `json:"severity"` // "low", "medium", "high", "critical"
+	Description     string      `json:"description"`
 }
 
 // FileImpact represents the impact analysis for a changed file

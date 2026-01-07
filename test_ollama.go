@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Local test script for manque-ai with Ollama
@@ -145,4 +146,3 @@ func stripAISummary(description string) string {
 	}
 	return strings.TrimSpace(description[:idx])
 }
-

@@ -39,7 +39,7 @@ func TestParserParse(t *testing.T) {
 	}{
 		{"@manque explain", CommandExplain, ""},
 		{"@manque explain this function", CommandExplain, "this function"},
-		{"@manque suggest fix", CommandSuggestFix, "fix"},           // "suggest" is command, "fix" is arg
+		{"@manque suggest fix", CommandSuggestFix, "fix"}, // "suggest" is command, "fix" is arg
 		{"@manque suggest a better approach", CommandSuggestFix, "a better approach"},
 		{"@manque fix this issue", CommandSuggestFix, "this issue"}, // "fix" maps to suggest_fix
 		{"@manque ignore false positive", CommandIgnore, "false positive"},

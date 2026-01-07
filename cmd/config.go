@@ -35,10 +35,10 @@ var configInitCmd = &cobra.Command{
 		fmt.Println("  3) anthropic")
 		fmt.Println("  4) google")
 		fmt.Print("\nChoice [1]: ")
-		
+
 		choice, _ := reader.ReadString('\n')
 		choice = strings.TrimSpace(choice)
-		
+
 		switch choice {
 		case "", "1":
 			config.Provider = "openrouter"
@@ -67,7 +67,7 @@ var configInitCmd = &cobra.Command{
 		fmt.Printf("\nEnter model name [%s]: ", defaultModel)
 		model, _ := reader.ReadString('\n')
 		model = strings.TrimSpace(model)
-		
+
 		if model == "" {
 			config.Model = defaultModel
 		} else {
@@ -100,18 +100,18 @@ var configShowCmd = &cobra.Command{
 		}
 
 		path, _ := userconfig.ConfigPath()
-		
+
 		fmt.Println("📋 manque-ai Configuration")
 		fmt.Println("──────────────────────────")
 		fmt.Printf("Config file: %s\n\n", path)
-		
+
 		provider := config.Provider
 		if provider == "" {
 			provider = "(not set, default: openrouter)"
 		}
 		fmt.Printf("Provider: %s\n", provider)
 		fmt.Printf("API Key:  %s\n", config.MaskedAPIKey())
-		
+
 		model := config.Model
 		if model == "" {
 			model = "(not set, default: mistralai/mistral-7b-instruct:free)"

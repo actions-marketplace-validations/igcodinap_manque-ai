@@ -52,7 +52,7 @@ func NewClient(token, apiURL string) *Client {
 		&oauth2.Token{AccessToken: token},
 	)
 	tc := oauth2.NewClient(ctx, ts)
-	
+
 	var client *github.Client
 	if apiURL != "" && apiURL != "https://api.github.com" {
 		// GitHub Enterprise
@@ -60,7 +60,7 @@ func NewClient(token, apiURL string) *Client {
 	} else {
 		client = github.NewClient(tc)
 	}
-	
+
 	return &Client{
 		client: client,
 		ctx:    ctx,
@@ -72,16 +72,16 @@ func (c *Client) GetPRFromEvent(eventPath string) (*PRInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read GitHub event file: %w", err)
 	}
-	
+
 	var event GitHubEvent
 	if err := json.Unmarshal(data, &event); err != nil {
 		return nil, fmt.Errorf("failed to parse GitHub event: %w", err)
 	}
-	
+
 	owner := event.Repository.Owner.Login
 	repo := event.Repository.Name
 	prNumber := event.PullRequest.Number
-	
+
 	return c.GetPR(owner, repo, prNumber)
 }
 
@@ -90,13 +90,13 @@ func (c *Client) GetPR(owner, repo string, number int) (*PRInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get PR: %w", err)
 	}
-	
+
 	// Get the diff
 	diff, err := c.getPRDiff(owner, repo, number)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get PR diff: %w", err)
 	}
-	
+
 	return &PRInfo{
 		Number:      number,
 		Title:       pr.GetTitle(),
@@ -114,14 +114,14 @@ func (c *Client) GetPRFromURL(url string) (*PRInfo, error) {
 	if len(parts) < 7 || parts[2] != "github.com" || parts[5] != "pull" {
 		return nil, fmt.Errorf("invalid GitHub PR URL format")
 	}
-	
+
 	owner := parts[3]
 	repo := parts[4]
 	prNumber, err := strconv.Atoi(parts[6])
 	if err != nil {
 		return nil, fmt.Errorf("invalid PR number: %w", err)
 	}
-	
+
 	return c.GetPR(owner, repo, prNumber)
 }
 
@@ -132,7 +132,7 @@ func (c *Client) getPRDiff(owner, repo string, number int) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get PR diff: %w", err)
 	}
-	
+
 	return diff, nil
 }
 
@@ -144,12 +144,12 @@ func (c *Client) UpdatePR(owner, repo string, number int, title, body *string) e
 	if body != nil {
 		update.Body = body
 	}
-	
+
 	_, _, err := c.client.PullRequests.Edit(c.ctx, owner, repo, number, update)
 	if err != nil {
 		return fmt.Errorf("failed to update PR: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -162,12 +162,12 @@ func (c *Client) CreateComment(owner, repo string, number int, body string) erro
 	comment := &github.IssueComment{
 		Body: &markedBody,
 	}
-	
+
 	_, _, err := c.client.Issues.CreateComment(c.ctx, owner, repo, number, comment)
 	if err != nil {
 		return fmt.Errorf("failed to create comment: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -179,13 +179,13 @@ func (c *Client) FindBotComment(owner, repo string, number int) (*github.IssueCo
 	if err != nil {
 		return nil, fmt.Errorf("failed to list comments: %w", err)
 	}
-	
+
 	for _, comment := range comments {
 		if comment.Body != nil && strings.HasPrefix(*comment.Body, BotCommentMarker) {
 			return comment, nil
 		}
 	}
-	
+
 	return nil, nil
 }
 
@@ -195,9 +195,9 @@ func (c *Client) CreateOrUpdateComment(owner, repo string, number int, body stri
 	if err != nil {
 		return err
 	}
-	
+
 	markedBody := BotCommentMarker + "\n" + body
-	
+
 	if existingComment != nil {
 		// Update existing comment
 		existingComment.Body = &markedBody
@@ -207,7 +207,7 @@ func (c *Client) CreateOrUpdateComment(owner, repo string, number int, body stri
 		}
 		return nil
 	}
-	
+
 	// Create new comment
 	comment := &github.IssueComment{
 		Body: &markedBody,
@@ -216,7 +216,7 @@ func (c *Client) CreateOrUpdateComment(owner, repo string, number int, body stri
 	if err != nil {
 		return fmt.Errorf("failed to create comment: %w", err)
 	}
-	
+
 	return nil
 }
 

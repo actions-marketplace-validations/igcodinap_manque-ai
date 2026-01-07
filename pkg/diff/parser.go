@@ -9,10 +9,10 @@ import (
 )
 
 type FileDiff struct {
-	Filename    string
-	OldContent  string
-	NewContent  string
-	Hunks       []Hunk
+	Filename   string
+	OldContent string
+	NewContent string
+	Hunks      []Hunk
 }
 
 type Hunk struct {
@@ -48,10 +48,10 @@ func ParseGitDiff(diffText string) ([]FileDiff, error) {
 	var files []FileDiff
 	var currentFile *FileDiff
 	var currentHunk *Hunk
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		// Check for new file
 		if match := fileHeaderRegex.FindStringSubmatch(line); match != nil {
 			if currentFile != nil {
@@ -60,7 +60,7 @@ func ParseGitDiff(diffText string) ([]FileDiff, error) {
 				}
 				files = append(files, *currentFile)
 			}
-			
+
 			currentFile = &FileDiff{
 				Filename: match[1], // Use the 'a/' path
 				Hunks:    []Hunk{},
@@ -68,13 +68,13 @@ func ParseGitDiff(diffText string) ([]FileDiff, error) {
 			currentHunk = nil
 			continue
 		}
-		
+
 		// Check for hunk header
 		if match := hunkHeaderRegex.FindStringSubmatch(line); match != nil {
 			if currentHunk != nil {
 				currentFile.Hunks = append(currentFile.Hunks, *currentHunk)
 			}
-			
+
 			oldStart, _ := strconv.Atoi(match[1])
 			oldCount := 1
 			if match[2] != "" {
@@ -85,7 +85,7 @@ func ParseGitDiff(diffText string) ([]FileDiff, error) {
 			if match[4] != "" {
 				newCount, _ = strconv.Atoi(match[4])
 			}
-			
+
 			currentHunk = &Hunk{
 				OldStart: oldStart,
 				OldCount: oldCount,
@@ -95,12 +95,12 @@ func ParseGitDiff(diffText string) ([]FileDiff, error) {
 			}
 			continue
 		}
-		
+
 		// Skip non-diff lines (file metadata, etc.)
 		if currentHunk == nil {
 			continue
 		}
-		
+
 		// Parse diff lines
 		if len(line) > 0 {
 			switch line[0] {
@@ -122,7 +122,7 @@ func ParseGitDiff(diffText string) ([]FileDiff, error) {
 			}
 		}
 	}
-	
+
 	// Add the last file and hunk
 	if currentFile != nil {
 		if currentHunk != nil {
@@ -130,24 +130,24 @@ func ParseGitDiff(diffText string) ([]FileDiff, error) {
 		}
 		files = append(files, *currentFile)
 	}
-	
+
 	// Calculate line numbers for each hunk
 	for i := range files {
 		for j := range files[i].Hunks {
 			calculateLineNumbers(&files[i].Hunks[j])
 		}
 	}
-	
+
 	return files, scanner.Err()
 }
 
 func calculateLineNumbers(hunk *Hunk) {
 	oldLineNum := hunk.OldStart
 	newLineNum := hunk.NewStart
-	
+
 	for i := range hunk.Lines {
 		line := &hunk.Lines[i]
-		
+
 		switch line.Type {
 		case LineContext:
 			line.OldNum = oldLineNum
@@ -167,15 +167,15 @@ func calculateLineNumbers(hunk *Hunk) {
 // FormatForLLM formats the diff in the specific format expected by the LLM
 func FormatForLLM(files []FileDiff) string {
 	var result strings.Builder
-	
+
 	for _, file := range files {
 		result.WriteString(fmt.Sprintf("## File: '%s'\n", file.Filename))
-		
+
 		for _, hunk := range file.Hunks {
 			// Write hunk header
-			result.WriteString(fmt.Sprintf("@@ -%d,%d +%d,%d @@\n", 
+			result.WriteString(fmt.Sprintf("@@ -%d,%d +%d,%d @@\n",
 				hunk.OldStart, hunk.OldCount, hunk.NewStart, hunk.NewCount))
-			
+
 			// Generate new hunk section
 			result.WriteString("__new hunk__\n")
 			newLineNum := hunk.NewStart
@@ -188,7 +188,7 @@ func FormatForLLM(files []FileDiff) string {
 					newLineNum++
 				}
 			}
-			
+
 			// Generate old hunk section
 			result.WriteString("__old hunk__\n")
 			for _, line := range hunk.Lines {
@@ -201,6 +201,6 @@ func FormatForLLM(files []FileDiff) string {
 		}
 		result.WriteString("\n")
 	}
-	
+
 	return result.String()
 }

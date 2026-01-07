@@ -14,11 +14,11 @@ func NewOpenAIClient(config Config) *OpenAIClient {
 	if baseURL == "" {
 		baseURL = "https://api.openai.com/v1"
 	}
-	
+
 	headers := map[string]string{
 		"Authorization": "Bearer " + config.APIKey,
 	}
-	
+
 	return &OpenAIClient{
 		BaseClient: NewBaseClient(config.APIKey, config.Model, baseURL, headers),
 	}
@@ -27,7 +27,7 @@ func NewOpenAIClient(config Config) *OpenAIClient {
 func (c *OpenAIClient) GeneratePRSummary(prTitle, prDescription, diff string) (*PRSummary, error) {
 	systemPrompt := GetPRSummaryPrompt()
 	userPrompt := fmt.Sprintf("PR Title: %s\n\nPR Description: %s\n\nGit Diff:\n%s", prTitle, prDescription, diff)
-	
+
 	request := ChatCompletionRequest{
 		Model: c.model,
 		Messages: []ChatMessage{
@@ -36,32 +36,32 @@ func (c *OpenAIClient) GeneratePRSummary(prTitle, prDescription, diff string) (*
 		},
 		Temperature: &[]float64{0.1}[0],
 	}
-	
+
 	respBytes, err := c.makeRequest("/chat/completions", request)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var response ChatCompletionResponse
 	if err := json.Unmarshal(respBytes, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if response.Error != nil {
 		return nil, fmt.Errorf("API error: %s", response.Error.Message)
 	}
-	
+
 	if len(response.Choices) == 0 {
 		return nil, fmt.Errorf("no response choices returned")
 	}
-	
+
 	content := extractJSONFromResponse(response.Choices[0].Message.Content)
-	
+
 	var summary PRSummary
 	if err := json.Unmarshal([]byte(content), &summary); err != nil {
 		return nil, fmt.Errorf("failed to parse PR summary JSON: %w", err)
 	}
-	
+
 	return &summary, nil
 }
 
@@ -76,9 +76,9 @@ func (c *OpenAIClient) GenerateCodeReviewWithStyleGuide(prTitle, prDescription, 
 	} else {
 		systemPrompt = GetCodeReviewPrompt()
 	}
-	
+
 	userPrompt := fmt.Sprintf("PR Title: %s\n\nPR Description: %s\n\nGit Diff:\n%s", prTitle, prDescription, diff)
-	
+
 	request := ChatCompletionRequest{
 		Model: c.model,
 		Messages: []ChatMessage{
@@ -87,25 +87,25 @@ func (c *OpenAIClient) GenerateCodeReviewWithStyleGuide(prTitle, prDescription, 
 		},
 		Temperature: &[]float64{0.1}[0],
 	}
-	
+
 	respBytes, err := c.makeRequest("/chat/completions", request)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var response ChatCompletionResponse
 	if err := json.Unmarshal(respBytes, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if response.Error != nil {
 		return nil, fmt.Errorf("API error: %s", response.Error.Message)
 	}
-	
+
 	if len(response.Choices) == 0 {
 		return nil, fmt.Errorf("no response choices returned")
 	}
-	
+
 	content := extractJSONFromResponse(response.Choices[0].Message.Content)
 
 	var review ReviewResult

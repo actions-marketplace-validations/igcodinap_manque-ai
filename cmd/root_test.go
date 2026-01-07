@@ -8,7 +8,7 @@ import (
 func TestStripAISummary_NoExistingSummary(t *testing.T) {
 	description := "This is a PR description without AI summary."
 	result := stripAISummary(description)
-	
+
 	if result != description {
 		t.Errorf("Expected unchanged description, got: %s", result)
 	}
@@ -25,7 +25,7 @@ This is the AI-generated summary.
 
 	result := stripAISummary(description)
 	expected := "This is the original PR description."
-	
+
 	if result != expected {
 		t.Errorf("Expected '%s', got: '%s'", expected, result)
 	}
@@ -46,7 +46,7 @@ Third summary`
 
 	result := stripAISummary(description)
 	expected := "Original description"
-	
+
 	if result != expected {
 		t.Errorf("Expected '%s', got: '%s'", expected, result)
 	}
@@ -90,7 +90,7 @@ func TestStripAISummary_CaseSensitive(t *testing.T) {
 This should NOT be stripped because case is different`
 
 	result := stripAISummary(description)
-	
+
 	// Since we use "## AI Summary" (uppercase), lowercase version should remain
 	if !strings.Contains(result, "## ai summary") {
 		t.Errorf("Expected lowercase '## ai summary' to be preserved, got: '%s'", result)
@@ -107,7 +107,7 @@ func TestStripAISummary_NewHTMLMarkers(t *testing.T) {
 
 	result := stripAISummary(description)
 	expected := "Original PR description."
-	
+
 	if result != expected {
 		t.Errorf("Expected '%s', got: '%s'", expected, result)
 	}
@@ -121,7 +121,7 @@ Old summary content...`
 
 	result := stripAISummary(description)
 	expected := "Original PR description."
-	
+
 	if result != expected {
 		t.Errorf("Expected '%s', got: '%s'", expected, result)
 	}
@@ -140,7 +140,7 @@ Old content inside new content`
 
 	result := stripAISummary(description)
 	expected := "Original content."
-	
+
 	if result != expected {
 		t.Errorf("Expected '%s', got: '%s'", expected, result)
 	}

@@ -25,12 +25,12 @@ func TestBotCommentMarker_Identifiable(t *testing.T) {
 func TestMarkedCommentFormat(t *testing.T) {
 	body := "Test comment body"
 	markedBody := BotCommentMarker + "\n" + body
-	
+
 	// Should start with marker
 	if !strings.HasPrefix(markedBody, BotCommentMarker) {
 		t.Errorf("Marked body should start with bot marker")
 	}
-	
+
 	// Should contain the original body
 	if !strings.Contains(markedBody, body) {
 		t.Errorf("Marked body should contain original body")
@@ -48,7 +48,7 @@ func TestPRInfo_Fields(t *testing.T) {
 		Diff:        "diff content",
 		HeadSHA:     "abc123",
 	}
-	
+
 	if prInfo.Number != 123 {
 		t.Errorf("Expected Number 123, got %d", prInfo.Number)
 	}
@@ -67,7 +67,7 @@ func TestGitHubEvent_Parsing(t *testing.T) {
 	event.Repository.FullName = "owner/repo"
 	event.Repository.Name = "repo"
 	event.Repository.Owner.Login = "owner"
-	
+
 	if event.PullRequest.Number != 42 {
 		t.Errorf("Expected PR number 42, got %d", event.PullRequest.Number)
 	}
@@ -97,4 +97,3 @@ func TestNewClient_EmptyAPIURL(t *testing.T) {
 		t.Error("Expected non-nil client for empty API URL")
 	}
 }
-

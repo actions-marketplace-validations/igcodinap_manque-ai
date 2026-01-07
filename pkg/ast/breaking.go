@@ -9,14 +9,14 @@ import (
 type BreakingChangeType string
 
 const (
-	BreakingRemoval            BreakingChangeType = "removal"
-	BreakingSignatureChange    BreakingChangeType = "signature_change"
-	BreakingTypeChange         BreakingChangeType = "type_change"
-	BreakingVisibilityChange   BreakingChangeType = "visibility_change"
-	BreakingParameterChange    BreakingChangeType = "parameter_change"
-	BreakingReturnTypeChange   BreakingChangeType = "return_type_change"
-	BreakingRequiredParameter  BreakingChangeType = "required_parameter"
-	BreakingBehaviorChange     BreakingChangeType = "behavior_change"
+	BreakingRemoval           BreakingChangeType = "removal"
+	BreakingSignatureChange   BreakingChangeType = "signature_change"
+	BreakingTypeChange        BreakingChangeType = "type_change"
+	BreakingVisibilityChange  BreakingChangeType = "visibility_change"
+	BreakingParameterChange   BreakingChangeType = "parameter_change"
+	BreakingReturnTypeChange  BreakingChangeType = "return_type_change"
+	BreakingRequiredParameter BreakingChangeType = "required_parameter"
+	BreakingBehaviorChange    BreakingChangeType = "behavior_change"
 )
 
 // BreakingChange represents a single breaking change
@@ -34,14 +34,14 @@ type BreakingChange struct {
 
 // BreakingChangeReport contains all detected breaking changes
 type BreakingChangeReport struct {
-	FileName       string           `json:"file_name"`
-	TotalChanges   int              `json:"total_changes"`
-	CriticalCount  int              `json:"critical_count"`
-	ErrorCount     int              `json:"error_count"`
-	WarningCount   int              `json:"warning_count"`
-	Changes        []BreakingChange `json:"changes"`
-	Summary        string           `json:"summary"`
-	HasBreaking    bool             `json:"has_breaking"`
+	FileName      string           `json:"file_name"`
+	TotalChanges  int              `json:"total_changes"`
+	CriticalCount int              `json:"critical_count"`
+	ErrorCount    int              `json:"error_count"`
+	WarningCount  int              `json:"warning_count"`
+	Changes       []BreakingChange `json:"changes"`
+	Summary       string           `json:"summary"`
+	HasBreaking   bool             `json:"has_breaking"`
 }
 
 // BreakingChangeDetector detects breaking API changes

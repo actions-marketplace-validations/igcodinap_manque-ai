@@ -10,10 +10,10 @@ import (
 
 // ImportInfo represents an import statement found in a file
 type ImportInfo struct {
-	Source      string // The file containing the import
-	ImportPath  string // The imported path
+	Source       string // The file containing the import
+	ImportPath   string // The imported path
 	ResolvedPath string // The resolved local file path
-	Language    string // The detected language
+	Language     string // The detected language
 }
 
 // Resolver resolves imports from code files to their local paths
@@ -29,11 +29,11 @@ func NewResolver(rootDir string) *Resolver {
 // Regular expressions for different import patterns
 var (
 	// Go: import "path" or import ( "path" )
-	goImportRegex = regexp.MustCompile(`(?:import\s+(?:"([^"]+)"|\(\s*(?:[^)]*?"([^"]+)"[^)]*?)*\s*\)))`)
+	goImportRegex  = regexp.MustCompile(`(?:import\s+(?:"([^"]+)"|\(\s*(?:[^)]*?"([^"]+)"[^)]*?)*\s*\)))`)
 	goSingleImport = regexp.MustCompile(`"([^"]+)"`)
 
 	// JavaScript/TypeScript: import ... from 'path' or require('path')
-	jsImportRegex  = regexp.MustCompile(`(?:import\s+.*?\s+from\s+['"]([^'"]+)['"]|require\s*\(\s*['"]([^'"]+)['"]\s*\))`)
+	jsImportRegex = regexp.MustCompile(`(?:import\s+.*?\s+from\s+['"]([^'"]+)['"]|require\s*\(\s*['"]([^'"]+)['"]\s*\))`)
 
 	// Python: import x or from x import y
 	pyImportRegex = regexp.MustCompile(`(?:from\s+(\S+)\s+import|import\s+(\S+))`)

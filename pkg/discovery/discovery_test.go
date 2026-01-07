@@ -211,7 +211,7 @@ func TestDiscover_IgnoresNonMatchingExtensions(t *testing.T) {
 }
 
 func containsString(haystack, needle string) bool {
-	return len(haystack) >= len(needle) && (haystack == needle || len(needle) == 0 || 
+	return len(haystack) >= len(needle) && (haystack == needle || len(needle) == 0 ||
 		(len(haystack) > 0 && containsSubstring(haystack, needle)))
 }
 

@@ -46,8 +46,8 @@ func TestFormatOutput(t *testing.T) {
 
 	reviewResult := &ai.ReviewResult{
 		Review: ai.ReviewSummary{
-			Score:           90,
-			EstimatedEffort: 2,
+			Score:            90,
+			EstimatedEffort:  2,
 			SecurityConcerns: "None",
 		},
 		Comments: []ai.Comment{
@@ -94,12 +94,12 @@ func TestEngine_Review(t *testing.T) {
 
 	config := &internal.Config{
 		LLMProvider: "openai", // Dummy
-		LLMAPIKey: "dummy",
+		LLMAPIKey:   "dummy",
 	}
-	
+
 	engine := &Engine{
 		AIClient: mockClient,
-		Config: config,
+		Config:   config,
 	}
 
 	// Simple Diff
@@ -111,7 +111,7 @@ index 123..456 100644
 -old
 +new
 `
-	
+
 	sum, rev, err := engine.Review(diff)
 	if err != nil {
 		t.Fatalf("Review returned error: %v", err)

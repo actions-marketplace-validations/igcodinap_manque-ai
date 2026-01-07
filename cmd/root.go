@@ -5,13 +5,13 @@ import (
 	"os"
 	"strings"
 
+	gh "github.com/google/go-github/v60/github"
 	"github.com/igcodinap/manque-ai/internal"
 	"github.com/igcodinap/manque-ai/pkg/ai"
 	"github.com/igcodinap/manque-ai/pkg/github"
 	"github.com/igcodinap/manque-ai/pkg/review"
 	"github.com/igcodinap/manque-ai/pkg/state"
 	"github.com/spf13/cobra"
-	gh "github.com/google/go-github/v60/github"
 )
 
 var (
@@ -45,7 +45,7 @@ func runReview(cmd *cobra.Command, args []string) {
 	// Initialize logging
 	debug, _ := cmd.Flags().GetBool("debug")
 	internal.InitLogger(debug)
-	
+
 	config, err := internal.LoadConfig()
 	if err != nil {
 		internal.Logger.Error("Failed to load configuration", "error", err)
@@ -245,11 +245,11 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 	// Create review with inline comments
 	if len(review.Comments) > 0 {
 		internal.Logger.Debug("AI returned comments", "count", len(review.Comments))
-		
+
 		var reviewComments []*gh.DraftReviewComment
 		seenComments := make(map[string]bool) // Deduplicate before sending
 		batchDuplicates := 0
-		
+
 		for _, comment := range review.Comments {
 			// Combine header and content for a complete, unique comment
 			var body strings.Builder
@@ -285,7 +285,7 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 			})
 		}
 		internal.Logger.Debug("Batch deduplication complete", "unique_comments", len(reviewComments), "batch_duplicates", batchDuplicates)
-		
+
 		// Determine review action based on score and critical issues
 		reviewAction := review.GetReviewAction(config.AutoApproveThreshold, config.BlockOnCritical)
 		internal.Logger.Debug("Review action determined", "action", reviewAction, "score", review.Review.Score, "threshold", config.AutoApproveThreshold)
@@ -347,10 +347,10 @@ func stripAISummary(description string) string {
 
 func formatWalkthrough(summary *ai.PRSummary, review *ai.ReviewResult) string {
 	var builder strings.Builder
-	
+
 	builder.WriteString("🐰 **Executive Summary**\n")
 	builder.WriteString(summary.Description + "\n\n")
-	
+
 	builder.WriteString("🔍 **Walkthrough**\n")
 	builder.WriteString("| File | Summary |\n")
 	builder.WriteString("|------|----------|\n")
@@ -358,7 +358,7 @@ func formatWalkthrough(summary *ai.PRSummary, review *ai.ReviewResult) string {
 		builder.WriteString(fmt.Sprintf("| `%s` | %s |\n", file.Filename, file.Summary))
 	}
 	builder.WriteString("\n")
-	
+
 	// Group comments by severity
 	var critical, warnings, suggestions []ai.Comment
 	for _, comment := range review.Comments {
@@ -371,7 +371,7 @@ func formatWalkthrough(summary *ai.PRSummary, review *ai.ReviewResult) string {
 			suggestions = append(suggestions, comment)
 		}
 	}
-	
+
 	if len(critical) > 0 {
 		builder.WriteString("🔴 **Critical Issues**\n")
 		for _, comment := range critical {
@@ -379,7 +379,7 @@ func formatWalkthrough(summary *ai.PRSummary, review *ai.ReviewResult) string {
 		}
 		builder.WriteString("\n")
 	}
-	
+
 	if len(warnings) > 0 {
 		builder.WriteString("🟡 **Warnings**\n")
 		for _, comment := range warnings {
@@ -387,7 +387,7 @@ func formatWalkthrough(summary *ai.PRSummary, review *ai.ReviewResult) string {
 		}
 		builder.WriteString("\n")
 	}
-	
+
 	if len(suggestions) > 0 {
 		builder.WriteString("💡 **Suggestions**\n")
 		for _, comment := range suggestions {
@@ -395,11 +395,11 @@ func formatWalkthrough(summary *ai.PRSummary, review *ai.ReviewResult) string {
 		}
 		builder.WriteString("\n")
 	}
-	
+
 	builder.WriteString(fmt.Sprintf("**Quality Score**: %d/100 | **Review Effort**: %d/5 | **Security**: %s",
-		review.Review.Score, 
+		review.Review.Score,
 		review.Review.EstimatedEffort,
 		review.Review.SecurityConcerns))
-	
+
 	return builder.String()
 }

@@ -38,21 +38,21 @@ type discoveryPattern struct {
 // patterns defines all the locations where repo practices might be found
 var patterns = []discoveryPattern{
 	{
-		Name:  "Cursor Rules",
-		Paths: []string{".cursor/rules", ".cursorrules", ".cursor-rules"},
-		IsDir: true,
+		Name:       "Cursor Rules",
+		Paths:      []string{".cursor/rules", ".cursorrules", ".cursor-rules"},
+		IsDir:      true,
 		Extensions: []string{".md", ".mdc", ".txt"},
 	},
 	{
-		Name:  "Claude Rules",
-		Paths: []string{".claude", "CLAUDE.md", "claude.md"},
-		IsDir: true,
+		Name:       "Claude Rules",
+		Paths:      []string{".claude", "CLAUDE.md", "claude.md"},
+		IsDir:      true,
 		Extensions: []string{".md", ".mdc", ".txt"},
 	},
 	{
-		Name:  "Agent Instructions",
-		Paths: []string{".agent", ".agents", "agents.md", "AGENTS.md", ".agent/workflows"},
-		IsDir: true,
+		Name:       "Agent Instructions",
+		Paths:      []string{".agent", ".agents", "agents.md", "AGENTS.md", ".agent/workflows"},
+		IsDir:      true,
 		Extensions: []string{".md", ".mdc", ".txt", ".yaml", ".yml"},
 	},
 	{
@@ -82,7 +82,7 @@ func Discover(repoPath string) (*RepoPractices, error) {
 	for _, pattern := range patterns {
 		for _, path := range pattern.Paths {
 			fullPath := filepath.Join(repoPath, path)
-			
+
 			info, err := os.Stat(fullPath)
 			if os.IsNotExist(err) {
 				continue
@@ -199,13 +199,13 @@ func buildCombinedOutput(sources map[string]string) string {
 	for _, path := range sortedPaths {
 		content := sources[path]
 		section := fmt.Sprintf("### %s\n\n%s\n\n", path, content)
-		
+
 		// Check size limit
 		if totalSize+len(section) > MaxPracticesSize {
 			builder.WriteString("\n... (additional files omitted due to size limit)\n")
 			break
 		}
-		
+
 		builder.WriteString(section)
 		totalSize += len(section)
 	}
@@ -223,11 +223,11 @@ func (p *RepoPractices) Summary() string {
 	if !p.HasPractices() {
 		return "No repository practices discovered"
 	}
-	
+
 	files := make([]string, 0, len(p.Sources))
 	for path := range p.Sources {
 		files = append(files, filepath.Base(path))
 	}
-	
+
 	return fmt.Sprintf("Discovered %d practice file(s): %s", len(files), strings.Join(files, ", "))
 }

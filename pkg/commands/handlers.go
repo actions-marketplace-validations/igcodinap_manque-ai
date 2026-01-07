@@ -38,23 +38,23 @@ type CommandContext struct {
 	PRDescription       string
 	PRNumber            int
 	Repository          string
-	CommentBody         string                // The original comment from user
-	FilePath            string                // File path if this is a review comment
-	FileLine            int                   // Line number if this is a review comment
-	CodeContext         string                // Surrounding code context
-	OriginalIssue       string                // The original bot comment that user is replying to
+	CommentBody         string // The original comment from user
+	FilePath            string // File path if this is a review comment
+	FileLine            int    // Line number if this is a review comment
+	CodeContext         string // Surrounding code context
+	OriginalIssue       string // The original bot comment that user is replying to
 	Session             *state.Session
 	ConversationHistory []ConversationMessage // Previous messages in this thread
 }
 
 // CommandResult contains the result of executing a command
 type CommandResult struct {
-	Response       string
-	UpdateSession  bool
-	DismissIssue   bool
-	DismissedHash  string
-	DismissReason  string
-	TriggerReview  bool
+	Response      string
+	UpdateSession bool
+	DismissIssue  bool
+	DismissedHash string
+	DismissReason string
+	TriggerReview bool
 }
 
 // Handle executes a command and returns the response

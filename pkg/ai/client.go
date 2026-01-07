@@ -64,7 +64,7 @@ func (c *BaseClient) makeRequest(endpoint string, payload interface{}) ([]byte, 
 
 	// Set default headers
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	// Set custom headers
 	for key, value := range c.headers {
 		req.Header.Set(key, value)
@@ -96,13 +96,13 @@ func extractJSONFromResponse(content string) string {
 			return strings.TrimSpace(content[start : start+end])
 		}
 	}
-	
+
 	// Try to find JSON content between { and } markers
 	start := strings.Index(content, "{")
 	if start == -1 {
 		return content
 	}
-	
+
 	braceCount := 0
 	for i, char := range content[start:] {
 		if char == '{' {
@@ -114,6 +114,6 @@ func extractJSONFromResponse(content string) string {
 			}
 		}
 	}
-	
+
 	return content
 }

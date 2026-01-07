@@ -324,13 +324,13 @@ func buildGoSignature(fn *ast.FuncDecl) string {
 
 var (
 	// TypeScript/JavaScript patterns
-	tsClassPattern    = regexp.MustCompile(`(?m)^(?:export\s+)?(?:abstract\s+)?class\s+(\w+)`)
-	tsFunctionPattern = regexp.MustCompile(`(?m)^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)`)
-	tsMethodPattern   = regexp.MustCompile(`(?m)^\s+(?:async\s+)?(\w+)\s*\(([^)]*)\)\s*(?::\s*\w+)?\s*\{`)
+	tsClassPattern     = regexp.MustCompile(`(?m)^(?:export\s+)?(?:abstract\s+)?class\s+(\w+)`)
+	tsFunctionPattern  = regexp.MustCompile(`(?m)^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)`)
+	tsMethodPattern    = regexp.MustCompile(`(?m)^\s+(?:async\s+)?(\w+)\s*\(([^)]*)\)\s*(?::\s*\w+)?\s*\{`)
 	tsInterfacePattern = regexp.MustCompile(`(?m)^(?:export\s+)?interface\s+(\w+)`)
-	tsTypePattern     = regexp.MustCompile(`(?m)^(?:export\s+)?type\s+(\w+)`)
-	tsConstPattern    = regexp.MustCompile(`(?m)^(?:export\s+)?const\s+(\w+)`)
-	tsArrowPattern    = regexp.MustCompile(`(?m)^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>`)
+	tsTypePattern      = regexp.MustCompile(`(?m)^(?:export\s+)?type\s+(\w+)`)
+	tsConstPattern     = regexp.MustCompile(`(?m)^(?:export\s+)?const\s+(\w+)`)
+	tsArrowPattern     = regexp.MustCompile(`(?m)^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>`)
 
 	// Python patterns
 	pyClassPattern    = regexp.MustCompile(`(?m)^class\s+(\w+)`)
@@ -350,7 +350,7 @@ var (
 	javaClassPattern     = regexp.MustCompile(`(?m)^\s*(?:public\s+)?(?:abstract\s+)?(?:final\s+)?class\s+(\w+)`)
 	javaInterfacePattern = regexp.MustCompile(`(?m)^\s*(?:public\s+)?interface\s+(\w+)`)
 	// Method pattern excludes constructors (constructor has same name as class, no return type)
-	javaMethodPattern    = regexp.MustCompile(`(?m)^\s+(?:public|private|protected)\s+(?:static\s+)?(?:final\s+)?(\w+(?:<[^>]*>)?)\s+(\w+)\s*\(([^)]*)\)`)
+	javaMethodPattern = regexp.MustCompile(`(?m)^\s+(?:public|private|protected)\s+(?:static\s+)?(?:final\s+)?(\w+(?:<[^>]*>)?)\s+(\w+)\s*\(([^)]*)\)`)
 )
 
 func (p *Parser) parseTypeScript(filename string, content string) ([]Symbol, error) {
@@ -363,12 +363,12 @@ func (p *Parser) parseTypeScript(filename string, content string) ([]Symbol, err
 			name := content[match[2]:match[3]]
 			line := countLines(content[:match[0]])
 			symbols = append(symbols, Symbol{
-				Name:     name,
-				Kind:     SymbolClass,
+				Name:      name,
+				Kind:      SymbolClass,
 				StartLine: line,
 				EndLine:   findBlockEnd(lines, line-1),
-				Exported: strings.Contains(content[match[0]:match[1]], "export"),
-				FilePath: filename,
+				Exported:  strings.Contains(content[match[0]:match[1]], "export"),
+				FilePath:  filename,
 			})
 		}
 	}
@@ -379,11 +379,11 @@ func (p *Parser) parseTypeScript(filename string, content string) ([]Symbol, err
 			name := content[match[2]:match[3]]
 			line := countLines(content[:match[0]])
 			symbols = append(symbols, Symbol{
-				Name:     name,
-				Kind:     SymbolInterface,
+				Name:      name,
+				Kind:      SymbolInterface,
 				StartLine: line,
-				Exported: strings.Contains(content[match[0]:match[1]], "export"),
-				FilePath: filename,
+				Exported:  strings.Contains(content[match[0]:match[1]], "export"),
+				FilePath:  filename,
 			})
 		}
 	}

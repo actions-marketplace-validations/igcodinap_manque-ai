@@ -24,12 +24,12 @@ type Session struct {
 
 // ReviewRecord represents a single review round
 type ReviewRecord struct {
-	SHA           string          `json:"sha"`
-	ReviewedAt    time.Time       `json:"reviewed_at"`
-	CommentHashes []string        `json:"comment_hashes"` // SHA256 of file:line:content
-	Score         int             `json:"score"`
-	IssueCount    int             `json:"issue_count"`
-	Addressed     []string        `json:"addressed,omitempty"` // Hashes of issues fixed in subsequent commits
+	SHA           string    `json:"sha"`
+	ReviewedAt    time.Time `json:"reviewed_at"`
+	CommentHashes []string  `json:"comment_hashes"` // SHA256 of file:line:content
+	Score         int       `json:"score"`
+	IssueCount    int       `json:"issue_count"`
+	Addressed     []string  `json:"addressed,omitempty"` // Hashes of issues fixed in subsequent commits
 }
 
 // Interaction represents a user interaction with the bot
@@ -43,8 +43,8 @@ type Interaction struct {
 
 // DismissedIssue represents an issue the user explicitly dismissed
 type DismissedIssue struct {
-	Hash       string    `json:"hash"` // file:line:content hash
-	Reason     string    `json:"reason,omitempty"`
+	Hash        string    `json:"hash"` // file:line:content hash
+	Reason      string    `json:"reason,omitempty"`
 	DismissedAt time.Time `json:"dismissed_at"`
 }
 

@@ -45,7 +45,7 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 		internal.Logger.Error("Failed to load configuration", "error", err)
 		return
 	}
-	
+
 	// For local review, GH_TOKEN is optional
 	config.SkipGitHubValidation = true
 	if err := config.Validate(); err != nil {
@@ -118,13 +118,13 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 		diffContent = "mock diff content"
 	} else {
 		internal.Logger.Info("Getting git diff...", "base", baseBranch, "head", headBranch)
-		
+
 		// Check if git is available
 		if _, err := exec.LookPath("git"); err != nil {
 			internal.Logger.Error("Git not found in PATH")
 			return
 		}
-	
+
 		// Run git diff
 		// Use merge-base to find common ancestor for better diff
 		mergeBaseCmd := exec.Command("git", "merge-base", baseBranch, headBranch)
@@ -134,27 +134,27 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 			return
 		}
 		commonAncestor := strings.TrimSpace(string(mergeBaseOut))
-	
+
 		diffCmd := exec.Command("git", "diff", commonAncestor, headBranch)
 		diffOut, err := diffCmd.Output()
 		if err != nil {
 			internal.Logger.Error("Failed to git diff", "error", err)
 			return
 		}
-	
+
 		diffContent = string(diffOut)
 		if len(diffContent) == 0 {
 			fmt.Println("No changes detected between branches.")
 			return
 		}
-	
+
 		internal.Logger.Debug("Diff retrieved", "size", len(diffContent))
 	}
 
 	// 3. Init Engine
 	// We need to manually construct config or fix the validation issue.
 	// Let's Assume LoadConfig succeeded (or we fix it in next step).
-	
+
 	engine, err := review.NewEngine(config)
 	if err != nil {
 		internal.Logger.Error("Failed to initialize engine", "error", err)
@@ -164,7 +164,7 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 	// 4. Run Review
 	var summary *ai.PRSummary
 	var result *ai.ReviewResult
-	
+
 	if mock {
 		internal.Logger.Info("Running in MOCK mode...")
 		// Use manual PRSummary with fields that match ai/types.go
@@ -179,7 +179,7 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 				{Filename: "internal/config.go", Summary: "Refactored validation to support optional GitHub tokens."},
 			},
 		}
-			result = &ai.ReviewResult{
+		result = &ai.ReviewResult{
 			Review: ai.ReviewSummary{
 				Score:            85,
 				EstimatedEffort:  2,
@@ -188,23 +188,23 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 			},
 			Comments: []ai.Comment{
 				{
-					File:      "internal/payments/service/integration_test.go",
-					StartLine: 104,
-					EndLine:   106,
-					Header:    "🟡 Remove duplicate line",
-					Content:   "Line 105 is a duplicate of line 104. This will cause the payment to be stored twice.",
-					Label:     "bug",
+					File:            "internal/payments/service/integration_test.go",
+					StartLine:       104,
+					EndLine:         106,
+					Header:          "🟡 Remove duplicate line",
+					Content:         "Line 105 is a duplicate of line 104. This will cause the payment to be stored twice.",
+					Label:           "bug",
 					HighlightedCode: "	r.payments[p.ID] = p\n	r.payments[p.ID] = p\n	return p, nil",
 					SuggestedCode:   "	r.payments[p.ID] = p\n	return p, nil",
 				},
 				{
-					File:      "internal/app/payments_initializer.go",
-					StartLine: 22,
-					EndLine:   26,
-					Header:    "🔴 Missing validation for required environment variables",
-					Content:   "The initializer reads MERCADOPAGO_ACCESS_TOKEN without validating it's set. An empty access token will cause all payment API calls to fail with unhelpful errors.",
-					Label:     "security",
-					Critical:  true,
+					File:            "internal/app/payments_initializer.go",
+					StartLine:       22,
+					EndLine:         26,
+					Header:          "🔴 Missing validation for required environment variables",
+					Content:         "The initializer reads MERCADOPAGO_ACCESS_TOKEN without validating it's set. An empty access token will cause all payment API calls to fail with unhelpful errors.",
+					Label:           "security",
+					Critical:        true,
 					HighlightedCode: "func initializePayments(sqlDB *sql.DB) PaymentsComponents {\n	mpAccessToken := os.Getenv(\"MERCADOPAGO_ACCESS_TOKEN\")\n	mpWebhookSecret := os.Getenv(\"MERCADOPAGO_WEBHOOK_SECRET\")",
 					SuggestedCode:   "func initializePayments(sqlDB *sql.DB) PaymentsComponents {\n	mpAccessToken := os.Getenv(\"MERCADOPAGO_ACCESS_TOKEN\")\n	if mpAccessToken == \"\" {\n		panic(\"MERCADOPAGO_ACCESS_TOKEN environment variable is required\")\n	}\n	mpWebhookSecret := os.Getenv(\"MERCADOPAGO_WEBHOOK_SECRET\")",
 				},

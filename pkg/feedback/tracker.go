@@ -11,41 +11,41 @@ import (
 type FeedbackType string
 
 const (
-	FeedbackAccepted     FeedbackType = "accepted"      // Suggestion was applied
-	FeedbackDismissed    FeedbackType = "dismissed"     // User dismissed the issue
-	FeedbackResolved     FeedbackType = "resolved"      // Issue was fixed
-	FeedbackThumbsUp     FeedbackType = "thumbs_up"     // User liked the comment
-	FeedbackThumbsDown   FeedbackType = "thumbs_down"   // User disliked the comment
-	FeedbackModified     FeedbackType = "modified"      // User modified the suggestion
-	FeedbackIgnored      FeedbackType = "ignored"       // User didn't act on it
+	FeedbackAccepted   FeedbackType = "accepted"    // Suggestion was applied
+	FeedbackDismissed  FeedbackType = "dismissed"   // User dismissed the issue
+	FeedbackResolved   FeedbackType = "resolved"    // Issue was fixed
+	FeedbackThumbsUp   FeedbackType = "thumbs_up"   // User liked the comment
+	FeedbackThumbsDown FeedbackType = "thumbs_down" // User disliked the comment
+	FeedbackModified   FeedbackType = "modified"    // User modified the suggestion
+	FeedbackIgnored    FeedbackType = "ignored"     // User didn't act on it
 )
 
 // FeedbackEntry represents a single feedback entry
 type FeedbackEntry struct {
-	CommentHash  string       `json:"comment_hash"`
-	Type         FeedbackType `json:"type"`
-	Repository   string       `json:"repository"`
-	PRNumber     int          `json:"pr_number"`
-	FilePath     string       `json:"file_path"`
-	Line         int          `json:"line"`
-	IssueType    string       `json:"issue_type"`    // bug, security, style, etc.
-	IsCritical   bool         `json:"is_critical"`
-	RecordedAt   time.Time    `json:"recorded_at"`
-	UserComment  string       `json:"user_comment,omitempty"` // Optional user explanation
+	CommentHash string       `json:"comment_hash"`
+	Type        FeedbackType `json:"type"`
+	Repository  string       `json:"repository"`
+	PRNumber    int          `json:"pr_number"`
+	FilePath    string       `json:"file_path"`
+	Line        int          `json:"line"`
+	IssueType   string       `json:"issue_type"` // bug, security, style, etc.
+	IsCritical  bool         `json:"is_critical"`
+	RecordedAt  time.Time    `json:"recorded_at"`
+	UserComment string       `json:"user_comment,omitempty"` // Optional user explanation
 }
 
 // FeedbackStats represents aggregated feedback statistics
 type FeedbackStats struct {
-	TotalComments      int                    `json:"total_comments"`
-	AcceptedCount      int                    `json:"accepted_count"`
-	DismissedCount     int                    `json:"dismissed_count"`
-	ResolvedCount      int                    `json:"resolved_count"`
-	IgnoredCount       int                    `json:"ignored_count"`
-	AcceptanceRate     float64                `json:"acceptance_rate"`
-	ByIssueType        map[string]IssueStats  `json:"by_issue_type"`
-	ByRepository       map[string]RepoStats   `json:"by_repository"`
-	CommonDismissals   []string               `json:"common_dismissals"`
-	UpdatedAt          time.Time              `json:"updated_at"`
+	TotalComments    int                   `json:"total_comments"`
+	AcceptedCount    int                   `json:"accepted_count"`
+	DismissedCount   int                   `json:"dismissed_count"`
+	ResolvedCount    int                   `json:"resolved_count"`
+	IgnoredCount     int                   `json:"ignored_count"`
+	AcceptanceRate   float64               `json:"acceptance_rate"`
+	ByIssueType      map[string]IssueStats `json:"by_issue_type"`
+	ByRepository     map[string]RepoStats  `json:"by_repository"`
+	CommonDismissals []string              `json:"common_dismissals"`
+	UpdatedAt        time.Time             `json:"updated_at"`
 }
 
 // IssueStats represents stats for a specific issue type
