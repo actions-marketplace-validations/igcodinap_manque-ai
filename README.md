@@ -33,61 +33,74 @@ Review your changes locally without pushing to GitHub. This is perfect for catch
 ### 1. Installation
 **Quick Install (Recommended)**
 ```bash
-./install.sh
+curl -sSL https://raw.githubusercontent.com/igcodinap/manque-ai/main/install.sh | bash
 ```
 
 **Manual Install**
 ```bash
 go install github.com/igcodinap/manque-ai@latest
-# or build from source
-git clone https://github.com/igcodinap/manque-ai
-cd manque-ai && go build -o manque-ai .
 ```
 
-### 2. Updating
-Easily update to the latest version:
+### 2. Configuration
+
+**Interactive Setup (Recommended)**
 ```bash
-manque-ai update
+manque-ai config init
 ```
 
-### 2. Setup (One-time)
-You can set your LLM credentials as environment variables or using a **`.env` file** in the project root. **Note: `GH_TOKEN` is OPTIONAL for local runs!**
+This wizard will guide you through setting up your LLM provider and API key. Config is saved to `~/.manque-ai/config.yaml`.
 
-#### Option A: Using a .env file (Recommended)
-Copy the example file and fill in your keys:
+**Other config commands:**
 ```bash
-cp .env.example .env
-# Edit .env and add your LLM_API_KEY
+manque-ai config show              # View current configuration
+manque-ai config set provider openai   # Set provider
+manque-ai config set api_key sk-xxx    # Set API key
+manque-ai config set model gpt-4o      # Set model
+manque-ai config clear             # Remove configuration
 ```
 
-#### Option B: Exporting variables (or adding to .env)
+**Alternative: Environment Variables**
+
+You can also use environment variables (they override config file):
+```bash
+export LLM_PROVIDER=openrouter
+export LLM_API_KEY=sk-or-...
+export LLM_MODEL=mistralai/mistral-7b-instruct:free
+```
+
+<details>
+<summary>Provider Examples</summary>
+
+**OpenRouter (Default - Free tier available)**
+```bash
+export LLM_PROVIDER=openrouter
+export LLM_API_KEY=sk-or-...
+# Default model: mistralai/mistral-7b-instruct:free
+```
 
 **OpenAI**
 ```bash
 export LLM_PROVIDER=openai
 export LLM_API_KEY=sk-...
+export LLM_MODEL=gpt-4o
 ```
 
 **Anthropic**
 ```bash
 export LLM_PROVIDER=anthropic
 export LLM_API_KEY=sk-ant-...
+export LLM_MODEL=claude-sonnet-4-20250514
 ```
 
-**Local Ollama** (No key required, just pointing to your local instance)
+**Local Ollama**
 ```bash
 export LLM_PROVIDER=openai
 export LLM_BASE_URL=http://localhost:11434/v1
 export LLM_API_KEY=ollama
-export LLM_MODEL=llama3 # Make sure to `ollama pull llama3` first!
+export LLM_MODEL=llama3
 ```
 
-**OpenRouter**
-```bash
-export LLM_PROVIDER=openrouter
-export LLM_API_KEY=sk-or-...
-export LLM_MODEL=anthropic/claude-3.5-sonnet
-```
+</details>
 
 ### 3. Run Review
 ```bash
@@ -99,6 +112,11 @@ manque-ai local --base develop --head feature-login
 
 # Debug mode (see exact API calls and diff sizes)
 manque-ai local --debug
+```
+
+### 4. Update
+```bash
+manque-ai update
 ```
 
 ---
@@ -135,8 +153,8 @@ jobs:
 |----------|-------------|-------------------|------------------|---------|
 | `GH_TOKEN` | GitHub API Token | ✅ | ❌ | - |
 | `LLM_API_KEY` | LLM Provider Key | ✅ | ✅ | - |
-| `LLM_PROVIDER` | `openai`, `anthropic`, `google`, `openrouter` | ❌ | ❌ | `openai` |
-| `LLM_MODEL` | Specific model ID | ❌ | ❌ | `gpt-4o` |
+| `LLM_PROVIDER` | `openai`, `anthropic`, `google`, `openrouter` | ❌ | ❌ | `openrouter` |
+| `LLM_MODEL` | Specific model ID | ❌ | ❌ | `mistralai/mistral-7b-instruct:free` |
 | `STYLE_GUIDE_RULES`| Custom instructions for the AI | ❌ | ❌ | - |
 | `UPDATE_PR_TITLE`| Auto-update PR title | ❌ | N/A | `true` |
 | `UPDATE_PR_BODY` | Auto-update PR description | ❌ | N/A | `true` |
