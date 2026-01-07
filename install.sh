@@ -17,15 +17,41 @@ echo "📦 Installing from github.com/igcodinap/manque-ai@latest..."
 go install github.com/igcodinap/manque-ai@latest
 
 # Verify installation
+GOPATH=$(go env GOPATH)
+GOBIN="$GOPATH/bin"
+
 if ! command -v manque-ai &> /dev/null; then
     echo "⚠️  manque-ai was installed but is not in your PATH."
-    echo "💡 Add this to your shell profile (~/.zshrc or ~/.bashrc):"
-    echo "   export PATH=\$PATH:\$(go env GOPATH)/bin"
-    
-    # Try to add it automatically if user agrees? No, let's keep it simple and safe.
-    GOPATH=$(go env GOPATH)
-    echo ""
-    echo "You can run it directly with: $GOPATH/bin/manque-ai"
+
+    # Detect shell profile
+    SHELL_NAME=$(basename "$SHELL")
+    case "$SHELL_NAME" in
+        zsh)  PROFILE="$HOME/.zshrc" ;;
+        bash)
+            if [[ -f "$HOME/.bash_profile" ]]; then
+                PROFILE="$HOME/.bash_profile"
+            else
+                PROFILE="$HOME/.bashrc"
+            fi
+            ;;
+        *)    PROFILE="$HOME/.profile" ;;
+    esac
+
+    # Check if GOPATH/bin is already in the profile
+    EXPORT_LINE='export PATH="$PATH:$(go env GOPATH)/bin"'
+    if grep -q 'go env GOPATH.*bin' "$PROFILE" 2>/dev/null || grep -q "$GOBIN" "$PROFILE" 2>/dev/null; then
+        echo "💡 GOPATH/bin is already in $PROFILE but not active in this session."
+        echo "   Run: source $PROFILE"
+    else
+        echo "📝 Adding GOPATH/bin to $PROFILE..."
+        echo "" >> "$PROFILE"
+        echo "# Added by manque-ai installer" >> "$PROFILE"
+        echo "$EXPORT_LINE" >> "$PROFILE"
+        echo "✅ Added to $PROFILE"
+        echo ""
+        echo "🔄 To use manque-ai now, run:"
+        echo "   source $PROFILE"
+    fi
 else
     echo "✅ manque-ai installed successfully!"
     manque-ai --help
