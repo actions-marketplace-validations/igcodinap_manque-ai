@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -60,12 +61,15 @@ func LoadConfig() (*Config, error) {
 	// Load .env file if it exists
 	_ = godotenv.Load()
 
+	// Load user config file (~/.manque-ai/config.yaml) for defaults
+	userCfg, _ := loadUserConfig()
+
 	config := &Config{
 		GitHubToken:           getEnvWithFallbacks("GH_TOKEN", "GITHUB_TOKEN"),
 		GitHubAPIURL:          getEnvWithDefault("GITHUB_API_URL", "https://api.github.com"),
-		LLMAPIKey:             getEnvWithFallbacks("LLM_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "OPENROUTER_API_KEY"),
-		LLMModel:              getEnvWithDefault("LLM_MODEL", "mistralai/mistral-7b-instruct:free"),
-		LLMProvider:           getEnvWithDefault("LLM_PROVIDER", "openrouter"),
+		LLMAPIKey:             getEnvOrUserConfig("LLM_API_KEY", userCfg.APIKey, getEnvWithFallbacks("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "OPENROUTER_API_KEY")),
+		LLMModel:              getEnvOrUserConfig("LLM_MODEL", userCfg.Model, "mistralai/mistral-7b-instruct:free"),
+		LLMProvider:           getEnvOrUserConfig("LLM_PROVIDER", userCfg.Provider, "openrouter"),
 		LLMBaseURL:            getEnvWithDefault("LLM_BASE_URL", ""),
 		StyleGuideRules:       getEnvWithDefault("STYLE_GUIDE_RULES", ""),
 		GitHubEventPath:       getEnvWithDefault("GITHUB_EVENT_PATH", ""),
@@ -126,6 +130,53 @@ func getEnvAsInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+// userConfigData holds values loaded from ~/.manque-ai/config.yaml
+type userConfigData struct {
+	Provider string
+	APIKey   string
+	Model    string
+}
+
+// loadUserConfig reads user config from ~/.manque-ai/config.yaml
+func loadUserConfig() (userConfigData, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return userConfigData{}, err
+	}
+
+	configPath := filepath.Join(home, ".manque-ai", "config.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return userConfigData{}, err
+	}
+
+	// Simple YAML parsing for our specific fields
+	cfg := userConfigData{}
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "provider:") {
+			cfg.Provider = strings.TrimSpace(strings.TrimPrefix(line, "provider:"))
+		} else if strings.HasPrefix(line, "api_key:") {
+			cfg.APIKey = strings.TrimSpace(strings.TrimPrefix(line, "api_key:"))
+		} else if strings.HasPrefix(line, "model:") {
+			cfg.Model = strings.TrimSpace(strings.TrimPrefix(line, "model:"))
+		}
+	}
+	return cfg, nil
+}
+
+// getEnvOrUserConfig returns env var value, then user config value, then fallback
+func getEnvOrUserConfig(envKey, userConfigValue, fallback string) string {
+	if value := os.Getenv(envKey); value != "" {
+		return value
+	}
+	if userConfigValue != "" {
+		return userConfigValue
+	}
+	return fallback
 }
 
 // ShouldIgnoreFile checks if a file should be ignored based on ignore patterns
