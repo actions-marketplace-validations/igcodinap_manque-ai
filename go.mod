@@ -1,4 +1,4 @@
-module github.com/manque-ai
+module github.com/igcodinap/manque-ai
 
 go 1.21
 

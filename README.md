@@ -4,7 +4,7 @@
 
 # AI Code Reviewer
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/manque-ai/manque-ai)](https://goreportcard.com/report/github.com/manque-ai/manque-ai)
+[![Go Report Card](https://goreportcard.com/badge/github.com/igcodinap/manque-ai)](https://goreportcard.com/report/github.com/igcodinap/manque-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker Image Version](https://img.shields.io/docker/v/igcodinap/manque-ai?sort=semver)](https://hub.docker.com/r/igcodinap/manque-ai)
 
@@ -31,11 +31,23 @@
 Review your changes locally without pushing to GitHub. This is perfect for catching issues early!
 
 ### 1. Installation
+**Quick Install (Recommended)**
 ```bash
-go install github.com/manque-ai/manque-ai@latest
+./install.sh
+```
+
+**Manual Install**
+```bash
+go install github.com/igcodinap/manque-ai@latest
 # or build from source
-git clone https://github.com/manque-ai/manque-ai
+git clone https://github.com/igcodinap/manque-ai
 cd manque-ai && go build -o manque-ai .
+```
+
+### 2. Updating
+Easily update to the latest version:
+```bash
+manque-ai update
 ```
 
 ### 2. Setup (One-time)

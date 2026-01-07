@@ -17,7 +17,7 @@ func NewOpenRouterClient(config Config) *OpenRouterClient {
 	
 	headers := map[string]string{
 		"Authorization": "Bearer " + config.APIKey,
-		"HTTP-Referer":  "https://github.com/manque-ai", // Required by OpenRouter
+		"HTTP-Referer":  "https://github.com/igcodinap/manque-ai", // Required by OpenRouter
 		"X-Title":       "manque-ai",                    // Optional: for tracking
 	}
 	

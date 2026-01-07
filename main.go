@@ -1,6 +1,6 @@
 package main
 
-import "github.com/manque-ai/cmd"
+import "github.com/igcodinap/manque-ai/cmd"
 
 func main() {
 	cmd.Execute()

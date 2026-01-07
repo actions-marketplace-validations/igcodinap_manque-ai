@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/manque-ai/internal"
-	"github.com/manque-ai/pkg/ai"
-	"github.com/manque-ai/pkg/state"
+	"github.com/igcodinap/manque-ai/internal"
+	"github.com/igcodinap/manque-ai/pkg/ai"
+	"github.com/igcodinap/manque-ai/pkg/state"
 )
 
 // Handler handles bot commands

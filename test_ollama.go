@@ -10,8 +10,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/manque-ai/pkg/ai"
-	"github.com/manque-ai/pkg/diff"
+	"github.com/igcodinap/manque-ai/pkg/ai"
+	"github.com/igcodinap/manque-ai/pkg/diff"
 )
 
 func main() {

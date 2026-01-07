@@ -12,11 +12,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/manque-ai/internal"
-	"github.com/manque-ai/pkg/ai"
-	"github.com/manque-ai/pkg/commands"
-	"github.com/manque-ai/pkg/github"
-	"github.com/manque-ai/pkg/state"
+	"github.com/igcodinap/manque-ai/internal"
+	"github.com/igcodinap/manque-ai/pkg/ai"
+	"github.com/igcodinap/manque-ai/pkg/commands"
+	"github.com/igcodinap/manque-ai/pkg/github"
+	"github.com/igcodinap/manque-ai/pkg/state"
 	"github.com/spf13/cobra"
 )
 

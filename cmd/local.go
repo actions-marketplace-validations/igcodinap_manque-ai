@@ -6,11 +6,11 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/manque-ai/internal"
-	"github.com/manque-ai/pkg/ai"
-	fileconfig "github.com/manque-ai/pkg/config"
-	"github.com/manque-ai/pkg/discovery"
-	"github.com/manque-ai/pkg/review"
+	"github.com/igcodinap/manque-ai/internal"
+	"github.com/igcodinap/manque-ai/pkg/ai"
+	fileconfig "github.com/igcodinap/manque-ai/pkg/config"
+	"github.com/igcodinap/manque-ai/pkg/discovery"
+	"github.com/igcodinap/manque-ai/pkg/review"
 	"github.com/spf13/cobra"
 )
 

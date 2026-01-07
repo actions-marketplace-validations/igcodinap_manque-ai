@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/manque-ai/internal"
-	"github.com/manque-ai/pkg/ai"
+	"github.com/igcodinap/manque-ai/internal"
+	"github.com/igcodinap/manque-ai/pkg/ai"
 )
 
 // MockAIClient implements ai.Client interface

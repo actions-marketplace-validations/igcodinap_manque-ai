@@ -37,7 +37,7 @@ func TestExtractGoImports(t *testing.T) {
 import (
 	"fmt"
 	"os"
-	"github.com/manque-ai/pkg/ai"
+	"github.com/igcodinap/manque-ai/pkg/ai"
 )
 
 func main() {

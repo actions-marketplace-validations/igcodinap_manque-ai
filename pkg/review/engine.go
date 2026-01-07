@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/manque-ai/internal"
-	"github.com/manque-ai/pkg/ai"
-	"github.com/manque-ai/pkg/context"
-	"github.com/manque-ai/pkg/diff"
+	"github.com/igcodinap/manque-ai/internal"
+	"github.com/igcodinap/manque-ai/pkg/ai"
+	"github.com/igcodinap/manque-ai/pkg/context"
+	"github.com/igcodinap/manque-ai/pkg/diff"
 )
 
 const (
