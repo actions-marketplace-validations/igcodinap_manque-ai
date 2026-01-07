@@ -65,7 +65,7 @@ func TestFormatOutput(t *testing.T) {
 	output := FormatOutput(summary, reviewResult)
 
 	expectedStrings := []string{
-		"🐰 **Executive Summary**",
+		"🪶 **Executive Summary**",
 		"This is a test description",
 		"File: file1.go",
 		"Line: 10 to 12",
