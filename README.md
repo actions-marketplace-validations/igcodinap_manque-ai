@@ -193,8 +193,10 @@ The project is built with modularity in mind, separating the "brain" from the in
 
 ## 🤝 Contributing
 
-We love contributions! Please fork the repository and submit a Pull Request.
+We love contributions! Please fork the repository and submit a Pull Request. Or open a bug if you notice any.
+
+Made with ❤️ from [Concon, Chile](https://www.google.com/search?sca_esv=760e5d65b7c9552a&sxsrf=AE3TifP-z7Necb_Ujj8y174gmieGKqR2cQ:1767800457086&udm=2&fbs=AIIjpHx4nJjfGojPVHhEACUHPiMQht6_BFq6vBIoFFRK7qchKHDX9TtpZ992kyQpCWcw0Wi-YYs4nsdnC8KGzOR7VwQCyjKvnt6zuwTJi0DnLtY3Dcu8lgFlRf1np4JvrceUHuyA83ZuZLrP3qv-XyX1faVL1U08R40IXSr3yZhyx0dfEQS4h-A5ef9AiZIZQy_lLpxQu3-1wPmFVQYRslb35r490aA4nQ&q=concon&sa=X&ved=2ahUKEwj97Zzy4fmRAxUjH7kGHbxqMfQQtKgLegQIERAB&biw=2560&bih=1318) 
 
 ## 📄 License
 
-MIT Licensed. default_api.
+MIT Licensed.
