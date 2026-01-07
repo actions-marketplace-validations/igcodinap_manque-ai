@@ -343,7 +343,7 @@ func FormatOutput(summary *ai.PRSummary, review *ai.ReviewResult) string {
 	// The user request shows file-based comments.
 	// However, usually a summary is nice. I will keep the summary but format the comments as requested.
 
-	builder.WriteString("🐰 **Executive Summary**\n")
+	builder.WriteString("🪶 **Executive Summary**\n")
 	builder.WriteString(summary.Description + "\n\n")
 
 	if len(review.Comments) == 0 {

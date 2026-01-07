@@ -348,7 +348,7 @@ func stripAISummary(description string) string {
 func formatWalkthrough(summary *ai.PRSummary, review *ai.ReviewResult) string {
 	var builder strings.Builder
 
-	builder.WriteString("🐰 **Executive Summary**\n")
+	builder.WriteString("🪶 **Executive Summary**\n")
 	builder.WriteString(summary.Description + "\n\n")
 
 	builder.WriteString("🔍 **Walkthrough**\n")

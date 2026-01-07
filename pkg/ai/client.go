@@ -43,7 +43,7 @@ type BaseClient struct {
 
 func NewBaseClient(apiKey, model, baseURL string, headers map[string]string) *BaseClient {
 	return &BaseClient{
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: 600 * time.Second},
 		apiKey:     apiKey,
 		model:      model,
 		baseURL:    baseURL,
