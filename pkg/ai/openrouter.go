@@ -109,11 +109,41 @@ func (c *OpenRouterClient) GenerateCodeReviewWithStyleGuide(prTitle, prDescripti
 	}
 	
 	content := extractJSONFromResponse(response.Choices[0].Message.Content)
-	
+
 	var review ReviewResult
 	if err := json.Unmarshal([]byte(content), &review); err != nil {
 		return nil, fmt.Errorf("failed to parse review JSON: %w", err)
 	}
-	
+
 	return &review, nil
+}
+
+func (c *OpenRouterClient) GenerateResponse(prompt string) (string, error) {
+	request := ChatCompletionRequest{
+		Model: c.model,
+		Messages: []ChatMessage{
+			{Role: "user", Content: prompt},
+		},
+		Temperature: &[]float64{0.7}[0],
+	}
+
+	respBytes, err := c.makeRequest("/chat/completions", request)
+	if err != nil {
+		return "", err
+	}
+
+	var response ChatCompletionResponse
+	if err := json.Unmarshal(respBytes, &response); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if response.Error != nil {
+		return "", fmt.Errorf("API error: %s", response.Error.Message)
+	}
+
+	if len(response.Choices) == 0 {
+		return "", fmt.Errorf("no response choices returned")
+	}
+
+	return response.Choices[0].Message.Content, nil
 }

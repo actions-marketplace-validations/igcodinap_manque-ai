@@ -23,6 +23,40 @@ type ReviewSummary struct {
 	SecurityConcerns string `json:"security_concerns"`
 }
 
+// ReviewAction represents the GitHub review action type
+type ReviewAction string
+
+const (
+	ReviewActionComment        ReviewAction = "COMMENT"
+	ReviewActionApprove        ReviewAction = "APPROVE"
+	ReviewActionRequestChanges ReviewAction = "REQUEST_CHANGES"
+)
+
+// GetReviewAction determines the appropriate GitHub review action based on the review result
+func (r *ReviewResult) GetReviewAction(autoApproveThreshold int, blockOnCritical bool) ReviewAction {
+	// Check for critical issues
+	hasCritical := false
+	for _, comment := range r.Comments {
+		if comment.Critical {
+			hasCritical = true
+			break
+		}
+	}
+
+	// If we have critical issues and blocking is enabled, request changes
+	if hasCritical && blockOnCritical {
+		return ReviewActionRequestChanges
+	}
+
+	// If score is above threshold and no critical issues, approve
+	if r.Review.Score >= autoApproveThreshold && !hasCritical && len(r.Comments) == 0 {
+		return ReviewActionApprove
+	}
+
+	// Default to comment
+	return ReviewActionComment
+}
+
 type Comment struct {
 	File            string `json:"file"`
 	StartLine       int    `json:"start_line"`
@@ -32,6 +66,7 @@ type Comment struct {
 	Content         string `json:"content"`
 	Label           string `json:"label"`    // e.g. "bug", "security"
 	Critical        bool   `json:"critical"`
+	SuggestedCode   string `json:"suggested_code,omitempty"` // GitHub suggestion block content
 }
 
 type ChatMessage struct {
@@ -43,6 +78,7 @@ type Client interface {
 	GeneratePRSummary(prTitle, prDescription, diff string) (*PRSummary, error)
 	GenerateCodeReview(prTitle, prDescription, diff string) (*ReviewResult, error)
 	GenerateCodeReviewWithStyleGuide(prTitle, prDescription, diff, styleGuide string) (*ReviewResult, error)
+	GenerateResponse(prompt string) (string, error) // For conversational responses
 }
 
 type ChatCompletionRequest struct {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/manque-ai/internal"
 	"github.com/manque-ai/pkg/ai"
+	fileconfig "github.com/manque-ai/pkg/config"
 	"github.com/manque-ai/pkg/discovery"
 	"github.com/manque-ai/pkg/review"
 	"github.com/spf13/cobra"
@@ -52,6 +53,33 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	// 2b. Load file-based config (.manque.yml)
+	cwd, err := os.Getwd()
+	if err == nil {
+		fileCfg, loadErr := fileconfig.LoadFromDirectory(cwd)
+		if loadErr != nil {
+			internal.Logger.Warn("Failed to load .manque.yml config", "error", loadErr)
+		} else {
+			// Merge file config into runtime config
+			if fileCfg.Review.AutoApproveThreshold > 0 {
+				config.AutoApproveThreshold = fileCfg.Review.AutoApproveThreshold
+			}
+			config.BlockOnCritical = fileCfg.Review.BlockOnCritical
+			config.IgnorePatterns = fileCfg.Ignore
+
+			// Convert path rules
+			config.PathRules = make(map[string]internal.PathRule)
+			for _, rule := range fileCfg.Rules {
+				config.PathRules[rule.Path] = internal.PathRule{
+					SeverityOverride: rule.SeverityOverride,
+					ExtraRules:       rule.ExtraRules,
+					Ignore:           rule.Ignore,
+				}
+			}
+			internal.Logger.Debug("Loaded file config", "ignore_patterns", len(config.IgnorePatterns), "path_rules", len(config.PathRules))
+		}
+	}
+
 	// 3. Discover repo practices (if enabled)
 	noDiscover, err := cmd.Flags().GetBool("no-discover")
 	if err != nil {
@@ -78,7 +106,11 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 	}
 
 	// 4. Get Git Diff
-	mock, _ := cmd.Flags().GetBool("mock")
+	mock, err := cmd.Flags().GetBool("mock")
+	if err != nil {
+		internal.Logger.Warn("Could not parse --mock flag", "error", err)
+		mock = false
+	}
 	var diffContent string
 
 	if mock {
@@ -159,19 +191,22 @@ func runLocalReview(cmd *cobra.Command, args []string) {
 					File:      "internal/payments/service/integration_test.go",
 					StartLine: 104,
 					EndLine:   106,
-					Header:    "Remove duplicate line.",
-					Content:   "Line 105 is a duplicate of line 104.",
-					Label:     "potential_issue",
-					HighlightedCode: " 	r.payments[p.ID] = p\n-	r.payments[p.ID] = p\n 	return p, nil",
+					Header:    "🟡 Remove duplicate line",
+					Content:   "Line 105 is a duplicate of line 104. This will cause the payment to be stored twice.",
+					Label:     "bug",
+					HighlightedCode: "	r.payments[p.ID] = p\n	r.payments[p.ID] = p\n	return p, nil",
+					SuggestedCode:   "	r.payments[p.ID] = p\n	return p, nil",
 				},
 				{
 					File:      "internal/app/payments_initializer.go",
 					StartLine: 22,
-					EndLine:   31,
-					Header:    "Add validation for required environment variables.",
-					Content:   "The initializer reads MERCADOPAGO_ACCESS_TOKEN and MERCADOPAGO_WEBHOOK_SECRET without validating they are set. An empty access token will cause all payment API calls to fail with unhelpful errors. Consider validating and logging a warning or returning an error.",
-					Label:     "potential_issue",
-					HighlightedCode: " func initializePayments(sqlDB *sql.DB) PaymentsComponents {\n 	// Get MercadoPago config from environment\n 	mpAccessToken := os.Getenv(\"MERCADOPAGO_ACCESS_TOKEN\")\n 	mpWebhookSecret := os.Getenv(\"MERCADOPAGO_WEBHOOK_SECRET\")\n+\n+\tif mpAccessToken == \"\" {\n+\t\t// Log warning - payments will fail without token\n+\t\t// Consider using slog here or returning an error\n+\t\tpanic(\"MERCADOPAGO_ACCESS_TOKEN environment variable is required\")\n+\t}\n \n 	// Create MercadoPago client\n 	mpClient := mercadopago.NewClient(mercadopago.ClientConfig{",
+					EndLine:   26,
+					Header:    "🔴 Missing validation for required environment variables",
+					Content:   "The initializer reads MERCADOPAGO_ACCESS_TOKEN without validating it's set. An empty access token will cause all payment API calls to fail with unhelpful errors.",
+					Label:     "security",
+					Critical:  true,
+					HighlightedCode: "func initializePayments(sqlDB *sql.DB) PaymentsComponents {\n	mpAccessToken := os.Getenv(\"MERCADOPAGO_ACCESS_TOKEN\")\n	mpWebhookSecret := os.Getenv(\"MERCADOPAGO_WEBHOOK_SECRET\")",
+					SuggestedCode:   "func initializePayments(sqlDB *sql.DB) PaymentsComponents {\n	mpAccessToken := os.Getenv(\"MERCADOPAGO_ACCESS_TOKEN\")\n	if mpAccessToken == \"\" {\n		panic(\"MERCADOPAGO_ACCESS_TOKEN environment variable is required\")\n	}\n	mpWebhookSecret := os.Getenv(\"MERCADOPAGO_WEBHOOK_SECRET\")",
 				},
 			},
 		}

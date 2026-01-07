@@ -131,11 +131,41 @@ func (c *AnthropicClient) GenerateCodeReviewWithStyleGuide(prTitle, prDescriptio
 	}
 	
 	content := extractJSONFromResponse(response.Content[0].Text)
-	
+
 	var review ReviewResult
 	if err := json.Unmarshal([]byte(content), &review); err != nil {
 		return nil, fmt.Errorf("failed to parse review JSON: %w", err)
 	}
-	
+
 	return &review, nil
+}
+
+func (c *AnthropicClient) GenerateResponse(prompt string) (string, error) {
+	request := AnthropicRequest{
+		Model:     c.model,
+		MaxTokens: 4096,
+		Messages: []AnthropicMessage{
+			{Role: "user", Content: prompt},
+		},
+	}
+
+	respBytes, err := c.makeRequest("/v1/messages", request)
+	if err != nil {
+		return "", err
+	}
+
+	var response AnthropicResponse
+	if err := json.Unmarshal(respBytes, &response); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if response.Error != nil {
+		return "", fmt.Errorf("API error: %s", response.Error.Message)
+	}
+
+	if len(response.Content) == 0 {
+		return "", fmt.Errorf("no response content returned")
+	}
+
+	return response.Content[0].Text, nil
 }

@@ -134,15 +134,24 @@ Return ONLY valid JSON in the following exact format:
       "header": "🟡 Missing error handling",
       "content": "This fetch call lacks error handling. Consider adding proper error handling and status checking.",
       "label": "bug",
-      "critical": false
+      "critical": false,
+      "suggested_code": "const result = await fetch(url).catch(err => { console.error('Fetch failed:', err); throw err; });"
     }
   ]
 }
 
 Format: JSON only - no markdown, no explanations.
 Language: English.
-Snippets: When suggesting fixes, provide the exact code snippet to replace the bad code.
-Reasoning: Explain why a change is needed (e.g., "This causes a re-render on every keystroke").
+
+CRITICAL - Suggested Code Rules:
+- When you identify an issue that can be fixed, ALWAYS provide a "suggested_code" field.
+- The suggested_code must contain the EXACT replacement code for the lines between start_line and end_line.
+- Include only the replacement code, no diff markers (no +/-).
+- Match the original indentation exactly.
+- If the fix spans multiple lines, include all lines with proper newlines.
+- Only omit suggested_code if the issue is purely informational (e.g., "consider refactoring").
+
+Reasoning: Always explain WHY a change is needed (e.g., "This causes a re-render on every keystroke").
 </output_rules>
 </system_configuration>
 

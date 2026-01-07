@@ -2,16 +2,27 @@ package review
 
 import (
 	"fmt"
+	"os"
+	"sort"
 	"strings"
 
 	"github.com/manque-ai/internal"
 	"github.com/manque-ai/pkg/ai"
+	"github.com/manque-ai/pkg/context"
 	"github.com/manque-ai/pkg/diff"
 )
 
+const (
+	// MaxChunkSize is the maximum size of a diff chunk in characters
+	MaxChunkSize = 80000
+	// MinChunkSize is the minimum useful chunk size
+	MinChunkSize = 10000
+)
+
 type Engine struct {
-	AIClient ai.Client
-	Config   *internal.Config
+	AIClient       ai.Client
+	Config         *internal.Config
+	ContextFetcher *context.Fetcher
 }
 
 func NewEngine(config *internal.Config) (*Engine, error) {
@@ -25,66 +36,21 @@ func NewEngine(config *internal.Config) (*Engine, error) {
 		return nil, fmt.Errorf("failed to initialize AI client: %w", err)
 	}
 
+	// Initialize context fetcher with current working directory
+	var ctxFetcher *context.Fetcher
+	if cwd, err := os.Getwd(); err == nil {
+		ctxFetcher = context.NewFetcher(cwd)
+	}
+
 	return &Engine{
-		AIClient: aiClient,
-		Config:   config,
+		AIClient:       aiClient,
+		Config:         config,
+		ContextFetcher: ctxFetcher,
 	}, nil
 }
 
 func (e *Engine) Review(diffContent string) (*ai.PRSummary, *ai.ReviewResult, error) {
-	// Parse the diff
-	files, err := diff.ParseGitDiff(diffContent)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse diff: %w", err)
-	}
-
-	formattedDiff := diff.FormatForLLM(files)
-
-	// Check for large diffs and truncate if necessary
-	const maxDiffSize = 100000
-	if len(formattedDiff) > maxDiffSize {
-		internal.Logger.Warn(fmt.Sprintf("Diff is too large (%d chars), truncating to %d chars...", len(formattedDiff), maxDiffSize))
-		runes := []rune(formattedDiff)
-		if len(runes) > maxDiffSize {
-			formattedDiff = string(runes[:maxDiffSize]) + "\n... (truncated due to size limit)"
-		}
-	}
-
-	// Generate Summary
-	internal.Logger.Info("Generating PR summary...")
-	// For local runs, we might not have title/desc, so we can use placeholders or pass them in if available.
-	// In the future, we could prompt for them or parse from first commit message.
-	title := "Local Changes"
-	description := "Review of local changes"
-	
-	if e.Config.PRNumber != 0 {
-		// If we have context (e.g. from GH), use it. But for pure local, defaults are fine.
-		// Wait, cmd/root.go passes real title/desc. We should accept them as args.
-		// Let's modify Review to take optional context.
-	}
-
-	summary, err := e.AIClient.GeneratePRSummary(title, description, formattedDiff)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate PR summary: %w", err)
-	}
-
-	// Generate Code Review
-	internal.Logger.Info("Generating code review...")
-	var review *ai.ReviewResult
-	
-	// Combine discovered practices with style guide rules
-	combinedRules := e.getCombinedRules()
-	
-	if combinedRules != "" {
-		review, err = e.AIClient.GenerateCodeReviewWithStyleGuide(title, description, formattedDiff, combinedRules)
-	} else {
-		review, err = e.AIClient.GenerateCodeReview(title, description, formattedDiff)
-	}
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate code review: %w", err)
-	}
-
-	return summary, review, nil
+	return e.ReviewWithContext("Local Changes", "Review of local changes", diffContent)
 }
 
 // ReviewWithContext allows passing specific title/description (used by GitHub action)
@@ -94,39 +60,260 @@ func (e *Engine) ReviewWithContext(title, description, diffContent string) (*ai.
 		return nil, nil, fmt.Errorf("failed to parse diff: %w", err)
 	}
 
-	formattedDiff := diff.FormatForLLM(files)
+	// Filter out ignored files
+	filteredFiles := e.filterIgnoredFiles(files)
+	if len(filteredFiles) == 0 {
+		internal.Logger.Info("No files to review after filtering")
+		return &ai.PRSummary{Description: "No reviewable files"}, &ai.ReviewResult{}, nil
+	}
 
-	const maxDiffSize = 100000
-	if len(formattedDiff) > maxDiffSize {
-		internal.Logger.Warn(fmt.Sprintf("Diff is too large (%d chars), truncating to %d chars...", len(formattedDiff), maxDiffSize))
-		runes := []rune(formattedDiff)
-		if len(runes) > maxDiffSize {
-			formattedDiff = string(runes[:maxDiffSize]) + "\n... (truncated due to size limit)"
-		}
+	// Create chunks based on file sizes
+	chunks := e.createFileChunks(filteredFiles)
+	internal.Logger.Info(fmt.Sprintf("Processing %d files in %d chunk(s)", len(filteredFiles), len(chunks)))
+
+	// Generate summary using the first chunk (or full diff if small enough)
+	summaryDiff := diff.FormatForLLM(chunks[0])
+	if len(chunks) > 1 {
+		// For summary, use a condensed version of all files
+		summaryDiff = e.createSummaryDiff(filteredFiles)
 	}
 
 	internal.Logger.Info("Generating PR summary...")
-	summary, err := e.AIClient.GeneratePRSummary(title, description, formattedDiff)
+	summary, err := e.AIClient.GeneratePRSummary(title, description, summaryDiff)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate PR summary: %w", err)
 	}
 
-	internal.Logger.Info("Generating code review...")
-	var review *ai.ReviewResult
-	
-	// Combine discovered practices with style guide rules
+	// Generate code review for each chunk and aggregate comments
 	combinedRules := e.getCombinedRules()
-	
-	if combinedRules != "" {
-		review, err = e.AIClient.GenerateCodeReviewWithStyleGuide(title, description, formattedDiff, combinedRules)
-	} else {
-		review, err = e.AIClient.GenerateCodeReview(title, description, formattedDiff)
-	}
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate code review: %w", err)
+	var allComments []ai.Comment
+	var totalScore, totalEffort int
+
+	for i, chunk := range chunks {
+		chunkDiff := diff.FormatForLLM(chunk)
+
+		// Fetch referenced files for context expansion
+		var contextSection string
+		if e.ContextFetcher != nil {
+			referencedFiles := e.ContextFetcher.FetchReferencedFiles(chunk)
+			if len(referencedFiles) > 0 {
+				contextSection = context.FormatForLLM(referencedFiles)
+				internal.Logger.Debug(fmt.Sprintf("Added %d referenced files to context", len(referencedFiles)))
+			}
+		}
+
+		// Add git blame context for code history
+		blameContext := e.getBlameContext(chunk)
+		if blameContext != "" {
+			contextSection += blameContext
+		}
+
+		// Combine diff with context
+		fullContext := chunkDiff
+		if contextSection != "" {
+			fullContext = chunkDiff + "\n" + contextSection
+		}
+
+		internal.Logger.Info(fmt.Sprintf("Generating code review for chunk %d/%d (%d files, %d chars)...",
+			i+1, len(chunks), len(chunk), len(fullContext)))
+
+		var review *ai.ReviewResult
+		if combinedRules != "" {
+			review, err = e.AIClient.GenerateCodeReviewWithStyleGuide(title, description, fullContext, combinedRules)
+		} else {
+			review, err = e.AIClient.GenerateCodeReview(title, description, fullContext)
+		}
+		if err != nil {
+			internal.Logger.Warn(fmt.Sprintf("Failed to review chunk %d: %v", i+1, err))
+			continue
+		}
+
+		allComments = append(allComments, review.Comments...)
+		totalScore += review.Review.Score
+		totalEffort += review.Review.EstimatedEffort
 	}
 
-	return summary, review, nil
+	// Aggregate results
+	avgScore := totalScore
+	avgEffort := totalEffort
+	if len(chunks) > 0 {
+		avgScore = totalScore / len(chunks)
+		avgEffort = totalEffort / len(chunks)
+	}
+
+	aggregatedReview := &ai.ReviewResult{
+		Review: ai.ReviewSummary{
+			Score:            avgScore,
+			EstimatedEffort:  avgEffort,
+			HasRelevantTests: e.hasTestFiles(filteredFiles),
+			SecurityConcerns: e.aggregateSecurityConcerns(allComments),
+		},
+		Comments: allComments,
+	}
+
+	return summary, aggregatedReview, nil
+}
+
+// filterIgnoredFiles removes files that match ignore patterns
+func (e *Engine) filterIgnoredFiles(files []diff.FileDiff) []diff.FileDiff {
+	if e.Config == nil {
+		return files
+	}
+
+	var filtered []diff.FileDiff
+	for _, file := range files {
+		if !e.Config.ShouldIgnoreFile(file.Filename) {
+			filtered = append(filtered, file)
+		} else {
+			internal.Logger.Debug("Ignoring file", "file", file.Filename)
+		}
+	}
+	return filtered
+}
+
+// createFileChunks groups files into chunks that fit within the size limit
+func (e *Engine) createFileChunks(files []diff.FileDiff) [][]diff.FileDiff {
+	if len(files) == 0 {
+		return nil
+	}
+
+	// Calculate size for each file
+	type fileWithSize struct {
+		file diff.FileDiff
+		size int
+	}
+	filesWithSizes := make([]fileWithSize, len(files))
+	for i, file := range files {
+		formatted := diff.FormatForLLM([]diff.FileDiff{file})
+		filesWithSizes[i] = fileWithSize{file: file, size: len(formatted)}
+	}
+
+	// Sort by size (largest first) for better packing
+	sort.Slice(filesWithSizes, func(i, j int) bool {
+		return filesWithSizes[i].size > filesWithSizes[j].size
+	})
+
+	// Greedy bin packing
+	var chunks [][]diff.FileDiff
+	var currentChunk []diff.FileDiff
+	currentSize := 0
+
+	for _, fws := range filesWithSizes {
+		// If this single file is too large, it gets its own chunk
+		if fws.size > MaxChunkSize {
+			if len(currentChunk) > 0 {
+				chunks = append(chunks, currentChunk)
+				currentChunk = nil
+				currentSize = 0
+			}
+			chunks = append(chunks, []diff.FileDiff{fws.file})
+			internal.Logger.Warn(fmt.Sprintf("File %s is very large (%d chars), reviewing separately", fws.file.Filename, fws.size))
+			continue
+		}
+
+		// If adding this file exceeds limit, start new chunk
+		if currentSize+fws.size > MaxChunkSize && len(currentChunk) > 0 {
+			chunks = append(chunks, currentChunk)
+			currentChunk = nil
+			currentSize = 0
+		}
+
+		currentChunk = append(currentChunk, fws.file)
+		currentSize += fws.size
+	}
+
+	// Add remaining files
+	if len(currentChunk) > 0 {
+		chunks = append(chunks, currentChunk)
+	}
+
+	return chunks
+}
+
+// createSummaryDiff creates a condensed diff for summary generation
+func (e *Engine) createSummaryDiff(files []diff.FileDiff) string {
+	var builder strings.Builder
+	builder.WriteString("# Files Changed Summary\n\n")
+
+	for _, file := range files {
+		addedLines := 0
+		removedLines := 0
+		for _, hunk := range file.Hunks {
+			for _, line := range hunk.Lines {
+				switch line.Type {
+				case diff.LineAdded:
+					addedLines++
+				case diff.LineRemoved:
+					removedLines++
+				}
+			}
+		}
+		builder.WriteString(fmt.Sprintf("- %s (+%d/-%d)\n", file.Filename, addedLines, removedLines))
+	}
+
+	// Add first file's diff as example if space permits
+	if len(files) > 0 {
+		firstDiff := diff.FormatForLLM([]diff.FileDiff{files[0]})
+		if len(firstDiff) < MaxChunkSize/2 {
+			builder.WriteString("\n# First File Details\n")
+			builder.WriteString(firstDiff)
+		}
+	}
+
+	return builder.String()
+}
+
+// hasTestFiles checks if any of the files are test files
+func (e *Engine) hasTestFiles(files []diff.FileDiff) bool {
+	for _, file := range files {
+		if strings.Contains(file.Filename, "_test.go") ||
+			strings.Contains(file.Filename, ".test.") ||
+			strings.Contains(file.Filename, ".spec.") ||
+			strings.Contains(file.Filename, "__tests__") {
+			return true
+		}
+	}
+	return false
+}
+
+// aggregateSecurityConcerns combines security-related comments
+func (e *Engine) aggregateSecurityConcerns(comments []ai.Comment) string {
+	var concerns []string
+	for _, comment := range comments {
+		if comment.Label == "security" || comment.Critical {
+			concerns = append(concerns, comment.Header)
+		}
+	}
+	if len(concerns) == 0 {
+		return "No significant security issues detected"
+	}
+	return fmt.Sprintf("%d security concern(s): %s", len(concerns), strings.Join(concerns, "; "))
+}
+
+// getBlameContext gets git blame context for files in a chunk
+func (e *Engine) getBlameContext(files []diff.FileDiff) string {
+	blameContexts := make(map[string]string)
+
+	for _, file := range files {
+		// Get the line numbers that were changed
+		var changedLines []int
+		for _, hunk := range file.Hunks {
+			for _, line := range hunk.Lines {
+				if line.Type == diff.LineAdded {
+					changedLines = append(changedLines, line.NewNum)
+				}
+			}
+		}
+
+		if len(changedLines) > 0 {
+			blameCtx := context.GetFileBlameContext(file.Filename, changedLines)
+			if blameCtx != "" {
+				blameContexts[file.Filename] = blameCtx
+			}
+		}
+	}
+
+	return context.FormatBlameContext(blameContexts)
 }
 
 // getCombinedRules combines discovered practices with user-provided style guide rules
@@ -197,7 +384,18 @@ func FormatOutput(summary *ai.PRSummary, review *ai.ReviewResult) string {
 		builder.WriteString(comment.Content + "\n\n")
 
 		if comment.HighlightedCode != "" {
-			builder.WriteString(comment.HighlightedCode + "\n\n")
+			builder.WriteString("Current Code:\n```\n")
+			builder.WriteString(comment.HighlightedCode)
+			builder.WriteString("\n```\n\n")
+		}
+
+		if comment.SuggestedCode != "" {
+			builder.WriteString("Suggested Fix:\n```suggestion\n")
+			builder.WriteString(comment.SuggestedCode)
+			if !strings.HasSuffix(comment.SuggestedCode, "\n") {
+				builder.WriteString("\n")
+			}
+			builder.WriteString("```\n\n")
 		}
 
 		builder.WriteString("Prompt for AI Agent:\n")

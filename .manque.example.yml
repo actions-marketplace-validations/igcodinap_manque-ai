@@ -1,0 +1,53 @@
+# Manque AI Configuration
+# Copy this file to .manque.yml and customize for your project
+
+version: 1
+
+review:
+  # Score threshold for auto-approving PRs (0-100)
+  # PRs with score >= threshold and no critical issues will be auto-approved
+  auto_approve_threshold: 90
+
+  # Request changes when critical security/logic issues are found
+  block_on_critical: true
+
+# Files and patterns to ignore during review
+ignore:
+  - "**/*.lock"
+  - "**/vendor/**"
+  - "**/node_modules/**"
+  - "**/*.generated.go"
+  - "**/dist/**"
+  - "**/*.min.js"
+  - "**/*.min.css"
+  - "**/__mocks__/**"
+  - "**/__snapshots__/**"
+
+# Path-specific rules
+rules:
+  # Example: Relax severity for test files
+  - path: "**/*_test.go"
+    severity_override: suggestion
+    extra_rules: |
+      - Test files can skip comprehensive error handling
+      - Mock implementations don't need full validation
+
+  # Example: Stricter rules for API endpoints
+  - path: "src/api/**"
+    extra_rules: |
+      - All endpoints MUST have authentication checks
+      - All endpoints MUST validate input parameters
+      - All endpoints MUST have rate limiting considerations
+      - Log all API errors with context
+
+  # Example: Security-critical paths
+  - path: "pkg/auth/**"
+    extra_rules: |
+      - No hardcoded secrets or tokens
+      - Use constant-time comparison for sensitive strings
+      - All authentication failures must be logged
+      - Session tokens must have expiration
+
+  # Example: Ignore generated files
+  - path: "**/generated/**"
+    ignore: true

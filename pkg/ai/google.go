@@ -156,11 +156,47 @@ func (c *GoogleClient) GenerateCodeReviewWithStyleGuide(prTitle, prDescription, 
 	}
 	
 	content := extractJSONFromResponse(response.Candidates[0].Content.Parts[0].Text)
-	
+
 	var review ReviewResult
 	if err := json.Unmarshal([]byte(content), &review); err != nil {
 		return nil, fmt.Errorf("failed to parse review JSON: %w", err)
 	}
-	
+
 	return &review, nil
+}
+
+func (c *GoogleClient) GenerateResponse(prompt string) (string, error) {
+	request := GoogleRequest{
+		Contents: []GoogleContent{
+			{
+				Role:  "user",
+				Parts: []GooglePart{{Text: prompt}},
+			},
+		},
+		GenerationConfig: &GoogleGenConfig{
+			Temperature:     &[]float64{0.7}[0],
+			MaxOutputTokens: &[]int{4096}[0],
+		},
+	}
+
+	endpoint := fmt.Sprintf("/models/%s:generateContent?key=%s", c.model, c.apiKey)
+	respBytes, err := c.makeRequest(endpoint, request)
+	if err != nil {
+		return "", err
+	}
+
+	var response GoogleResponse
+	if err := json.Unmarshal(respBytes, &response); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if response.Error != nil {
+		return "", fmt.Errorf("API error: %s", response.Error.Message)
+	}
+
+	if len(response.Candidates) == 0 || len(response.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("no response candidates returned")
+	}
+
+	return response.Candidates[0].Content.Parts[0].Text, nil
 }

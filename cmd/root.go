@@ -9,6 +9,7 @@ import (
 	"github.com/manque-ai/pkg/ai"
 	"github.com/manque-ai/pkg/github"
 	"github.com/manque-ai/pkg/review"
+	"github.com/manque-ai/pkg/state"
 	"github.com/spf13/cobra"
 	gh "github.com/google/go-github/v60/github"
 )
@@ -99,30 +100,108 @@ func runReview(cmd *cobra.Command, args []string) {
 
 	internal.Logger.Info("Reviewing PR", "number", prInfo.Number, "title", prInfo.Title)
 
+	// Check for incremental review
+	tracker := state.NewTracker(prInfo.Repository, prInfo.Number)
+	isIncremental, previousState := tracker.IsIncrementalReview(prInfo.Description, prInfo.HeadSHA)
+
+	// Load or create session for memory across reviews
+	sessionManager := state.NewSessionManager(prInfo.Repository, prInfo.Number)
+	session := sessionManager.GetOrCreateSession(prInfo.Description)
+	if len(session.Reviews) > 0 {
+		internal.Logger.Info("Session loaded", "previous_reviews", len(session.Reviews), "dismissed_issues", len(session.Dismissed))
+	}
+
+	var diffToReview string
+	if isIncremental && previousState != nil {
+		// Get incremental diff
+		internal.Logger.Info("Incremental review detected", "previous_sha", previousState.LastReviewedSHA[:7], "current_sha", prInfo.HeadSHA[:7])
+		incrementalDiff, err := state.GetIncrementalDiff(previousState.LastReviewedSHA, prInfo.HeadSHA)
+		if err != nil {
+			internal.Logger.Warn("Failed to get incremental diff, falling back to full review", "error", err)
+			diffToReview = prInfo.Diff
+		} else if incrementalDiff == "" {
+			internal.Logger.Info("No new changes to review")
+			return
+		} else {
+			diffToReview = incrementalDiff
+		}
+	} else {
+		diffToReview = prInfo.Diff
+	}
+
 	// Run Review
 	// Note: We use ReviewWithContext since we have the full PR details
-	summary, result, err := engine.ReviewWithContext(prInfo.Title, prInfo.Description, prInfo.Diff)
+	summary, result, err := engine.ReviewWithContext(prInfo.Title, prInfo.Description, diffToReview)
 	if err != nil {
 		internal.Logger.Error("Review failed", "error", err)
 		os.Exit(1)
 	}
 
+	// Filter out dismissed issues from session memory
+	filteredComments := filterDismissedComments(result.Comments, session)
+	result.Comments = filteredComments
+
+	// Compute comment hashes for session tracking
+	var commentHashes []string
+	for _, comment := range result.Comments {
+		hash := state.ComputeCommentHash(comment.File, comment.StartLine, comment.EndLine, comment.Content)
+		commentHashes = append(commentHashes, hash)
+	}
+
+	// Update session with this review
+	session.AddReviewRecord(prInfo.HeadSHA, commentHashes, result.Review.Score, len(result.Comments))
+	session.TrimSession(10) // Keep last 10 reviews
+	sessionMarker := state.CreateSessionMarker(session)
+
+	// Store review state for future incremental reviews
+	newState := tracker.CreateNewState(prInfo.HeadSHA, len(result.Comments))
+	stateMarker := state.CreateStateMarker(newState)
+
 	// Post results to GitHub
-	err = postResultsToGitHub(githubClient, prInfo, summary, result, config)
+	err = postResultsToGitHub(githubClient, prInfo, summary, result, config, stateMarker, sessionMarker, isIncremental)
 	if err != nil {
 		internal.Logger.Error("Failed to post results to GitHub", "error", err)
 		os.Exit(1)
 	}
 
-	internal.Logger.Info("✅ Review completed successfully!")
+	if isIncremental {
+		internal.Logger.Info("✅ Incremental review completed successfully!")
+	} else {
+		internal.Logger.Info("✅ Review completed successfully!")
+	}
 }
 
-func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, summary *ai.PRSummary, review *ai.ReviewResult, config *internal.Config) error {
+// filterDismissedComments removes comments that were previously dismissed by users
+func filterDismissedComments(comments []ai.Comment, session *state.Session) []ai.Comment {
+	if session == nil || len(session.Dismissed) == 0 {
+		return comments
+	}
+
+	var filtered []ai.Comment
+	dismissedCount := 0
+	for _, comment := range comments {
+		hash := state.ComputeCommentHash(comment.File, comment.StartLine, comment.EndLine, comment.Content)
+		if session.IsDismissed(hash) {
+			dismissedCount++
+			internal.Logger.Debug("Skipping dismissed issue", "file", comment.File, "line", comment.StartLine)
+			continue
+		}
+		filtered = append(filtered, comment)
+	}
+
+	if dismissedCount > 0 {
+		internal.Logger.Info("Filtered dismissed issues", "count", dismissedCount)
+	}
+
+	return filtered
+}
+
+func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, summary *ai.PRSummary, review *ai.ReviewResult, config *internal.Config, stateMarker, sessionMarker string, isIncremental bool) error {
 	parts := strings.Split(prInfo.Repository, "/")
 	owner, repo := parts[0], parts[1]
 
-	// Update PR title if configured
-	if config.UpdatePRTitle {
+	// Update PR title if configured (only on first review, not incremental)
+	if config.UpdatePRTitle && !isIncremental {
 		if err := githubClient.UpdatePR(owner, repo, prInfo.Number, &summary.Title, nil); err != nil {
 			return fmt.Errorf("failed to update PR title: %w", err)
 		}
@@ -132,16 +211,32 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 	if config.UpdatePRBody {
 		// Build the AI summary section
 		walkthrough := formatWalkthrough(summary, review)
-		
+
 		var aiSection strings.Builder
 		aiSection.WriteString("\n\n<!-- ai-review-start -->\n")
-		aiSection.WriteString("# 🤖 AI Code Review\n\n")
+		if isIncremental {
+			aiSection.WriteString("# 🤖 AI Code Review (Incremental)\n\n")
+		} else {
+			aiSection.WriteString("# 🤖 AI Code Review\n\n")
+		}
 		aiSection.WriteString(walkthrough)
-		aiSection.WriteString("\n<!-- ai-review-end -->")
-		
-		// Strip any existing AI summary from the description and add new one
-		enhanced := stripAISummary(prInfo.Description) + aiSection.String()
-		
+		aiSection.WriteString("\n")
+		// Add state marker for future incremental reviews
+		if stateMarker != "" {
+			aiSection.WriteString(stateMarker)
+			aiSection.WriteString("\n")
+		}
+		// Add session marker for memory across reviews
+		if sessionMarker != "" {
+			aiSection.WriteString(sessionMarker)
+			aiSection.WriteString("\n")
+		}
+		aiSection.WriteString("<!-- ai-review-end -->")
+
+		// Strip any existing AI summary, state marker, and session marker from the description
+		cleanDescription := state.StripSessionMarker(state.StripStateMarker(stripAISummary(prInfo.Description)))
+		enhanced := cleanDescription + aiSection.String()
+
 		if err := githubClient.UpdatePR(owner, repo, prInfo.Number, nil, &enhanced); err != nil {
 			return fmt.Errorf("failed to update PR body: %w", err)
 		}
@@ -157,39 +252,73 @@ func postResultsToGitHub(githubClient *github.Client, prInfo *github.PRInfo, sum
 		
 		for _, comment := range review.Comments {
 			// Combine header and content for a complete, unique comment
-			body := fmt.Sprintf("**%s**\n\n%s", comment.Header, comment.Content)
-			
+			var body strings.Builder
+			body.WriteString(fmt.Sprintf("**%s**\n\n%s", comment.Header, comment.Content))
+
+			// Add GitHub suggestion block if we have suggested code
+			if comment.SuggestedCode != "" {
+				body.WriteString("\n\n```suggestion\n")
+				body.WriteString(comment.SuggestedCode)
+				// Ensure newline at end of suggestion
+				if !strings.HasSuffix(comment.SuggestedCode, "\n") {
+					body.WriteString("\n")
+				}
+				body.WriteString("```")
+			}
+
+			bodyStr := body.String()
+
 			// Create a fingerprint to detect duplicates within this batch
-			fingerprint := fmt.Sprintf("%s:%d:%d:%s", comment.File, comment.StartLine, comment.EndLine, body)
+			fingerprint := fmt.Sprintf("%s:%d:%d:%s", comment.File, comment.StartLine, comment.EndLine, bodyStr)
 			if seenComments[fingerprint] {
 				batchDuplicates++
 				internal.Logger.Debug("Batch duplicate found", "file", comment.File, "startLine", comment.StartLine, "endLine", comment.EndLine)
 				continue // Skip duplicate
 			}
 			seenComments[fingerprint] = true
-			
+
 			reviewComments = append(reviewComments, &gh.DraftReviewComment{
 				Path:      &comment.File,
 				Line:      &comment.EndLine,
 				StartLine: &comment.StartLine,
-				Body:      &body,
+				Body:      &bodyStr,
 			})
 		}
 		internal.Logger.Debug("Batch deduplication complete", "unique_comments", len(reviewComments), "batch_duplicates", batchDuplicates)
 		
-		reviewBody := fmt.Sprintf("## Code Review Summary\n\n" +
-			"**Estimated Review Effort**: %d/5\n" +
-			"**Quality Score**: %d/100\n" +
-			"**Has Relevant Tests**: %t\n" +
-			"**Security Concerns**: %s\n\n" +
-			"Found %d issues requiring attention.",
+		// Determine review action based on score and critical issues
+		reviewAction := review.GetReviewAction(config.AutoApproveThreshold, config.BlockOnCritical)
+		internal.Logger.Debug("Review action determined", "action", reviewAction, "score", review.Review.Score, "threshold", config.AutoApproveThreshold)
+
+		actionEmoji := "💬"
+		actionText := "Comment"
+		switch reviewAction {
+		case ai.ReviewActionApprove:
+			actionEmoji = "✅"
+			actionText = "Approved"
+		case ai.ReviewActionRequestChanges:
+			actionEmoji = "🚫"
+			actionText = "Changes Requested"
+		}
+
+		reviewBody := fmt.Sprintf("## %s Code Review Summary\n\n"+
+			"**Estimated Review Effort**: %d/5\n"+
+			"**Quality Score**: %d/100\n"+
+			"**Has Relevant Tests**: %t\n"+
+			"**Security Concerns**: %s\n\n"+
+			"Found %d issues requiring attention.\n\n"+
+			"**Review Action**: %s %s",
+			actionEmoji,
 			review.Review.EstimatedEffort,
 			review.Review.Score,
 			review.Review.HasRelevantTests,
 			review.Review.SecurityConcerns,
-			len(review.Comments))
-		
-		if err := githubClient.CreateReview(owner, repo, prInfo.Number, reviewComments, &reviewBody); err != nil {
+			len(review.Comments),
+			actionEmoji,
+			actionText)
+
+		opts := github.CreateReviewOptions{IsIncremental: isIncremental}
+		if err := githubClient.CreateReviewWithOptions(owner, repo, prInfo.Number, reviewComments, &reviewBody, string(reviewAction), opts); err != nil {
 			return fmt.Errorf("failed to create review: %w", err)
 		}
 	}

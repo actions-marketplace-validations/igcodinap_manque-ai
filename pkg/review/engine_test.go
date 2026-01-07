@@ -26,6 +26,10 @@ func (m *MockAIClient) GenerateCodeReviewWithStyleGuide(title, description, diff
 	return m.Review, nil
 }
 
+func (m *MockAIClient) GenerateResponse(prompt string) (string, error) {
+	return "Mock response", nil
+}
+
 func TestFormatOutput(t *testing.T) {
 	summary := &ai.PRSummary{
 		Title:       "Test PR",
@@ -63,11 +67,13 @@ func TestFormatOutput(t *testing.T) {
 	expectedStrings := []string{
 		"🐰 **Executive Summary**",
 		"This is a test description",
-		"| `file1.go` | Added logic |",
-		"🔴 **Critical Issues**",
-		"- **file1.go:10** - 🔴 Bug detected",
-		"> Fix this bug",
-		"**Quality Score**: 90/100",
+		"File: file1.go",
+		"Line: 10 to 12",
+		"Type: bug",
+		"Comment:",
+		"🔴 Bug detected",
+		"Fix this bug",
+		"Prompt for AI Agent:",
 	}
 
 	for _, exp := range expectedStrings {
